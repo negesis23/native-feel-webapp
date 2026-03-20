@@ -1,38 +1,44 @@
 import { CanvasEngine } from './canvas-engine';
 
+interface Ripple {
+  id: number;
+  x: number;
+  y: number;
+  radius: number;
+  targetRadius: number;
+  alpha: number;
+  state: 'growing' | 'fading';
+}
+
 interface Todo {
   id: number;
   text: string;
   done: boolean;
-  ripple?: Ripple;
-}
-
-interface Ripple {
-  x: number;
-  y: number;
-  radius: number;
-  alpha: number;
-  active: boolean;
+  ripples: Ripple[];
 }
 
 export function startApp(canvas: HTMLCanvasElement) {
   const engine = new CanvasEngine(canvas);
 
-  // State
   let todos: Todo[] = [
-    { id: 1, text: 'Learn WebAssembly', done: true },
-    { id: 2, text: 'Build Custom UI Engine', done: true },
-    { id: 3, text: 'Bypass HTML/CSS/DOM', done: true },
-    { id: 4, text: 'Implement Material Design 3', done: false },
-    { id: 5, text: 'Add Momentum Scrolling', done: false },
-    { id: 6, text: 'Feel Native like Flutter', done: false },
+    { id: 1, text: 'Learn WebAssembly', done: true, ripples: [] },
+    { id: 2, text: 'Build Custom UI Engine', done: true, ripples: [] },
+    { id: 3, text: 'Bypass HTML/CSS/DOM', done: true, ripples: [] },
+    { id: 4, text: 'Implement Material Design 3', done: true, ripples: [] },
+    { id: 5, text: 'Add Momentum Scrolling', done: true, ripples: [] },
+    { id: 6, text: 'Feel Native like Flutter', done: true, ripples: [] },
+    { id: 7, text: 'Rubber Band Overscroll', done: true, ripples: [] },
+    { id: 8, text: 'Native Press Ripples', done: true, ripples: [] },
+    { id: 9, text: 'PWA Installable', done: true, ripples: [] },
+    { id: 10, text: '60fps Smoothness', done: false, ripples: [] },
+    { id: 11, text: 'Squash & Stretch Animation', done: false, ripples: [] },
+    { id: 12, text: 'Perfect Scroll Physics', done: false, ripples: [] },
   ];
 
   let scrollY = 0;
   let velocityY = 0;
-  const friction = 0.95;
+  let stretchAmount = 0; // Separate visual stretch from physical scroll
 
-  // Material 3 Dark Theme Colors
   const colors = {
     background: '#141218',
     surface: '#141218',
@@ -44,17 +50,14 @@ export function startApp(canvas: HTMLCanvasElement) {
     outline: '#938F99',
     onSurface: '#E6E0E9',
     onSurfaceVariant: '#CAC4D0',
-    ripple: 'rgba(208, 188, 255, 0.12)',
   };
 
-  // Layout
   const appBarHeight = 64;
   const itemHeight = 72;
   const fabSize = 56;
   const fabMargin = 16;
   const maxContentWidth = 600;
 
-  // Helpers
   function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
     if (w < 2 * r) r = w / 2;
     if (h < 2 * r) r = h / 2;
@@ -81,101 +84,211 @@ export function startApp(canvas: HTMLCanvasElement) {
     ctx.shadowOffsetY = 0;
   }
 
-  engine.onClick = (x, y) => {
+  let activeRippleItem: Todo | null = null;
+
+  engine.onPointerDownCb = (x, y) => {
     const contentX = Math.max(0, (engine.width - maxContentWidth) / 2);
     const contentW = Math.min(engine.width, maxContentWidth);
+    
+    if (y > appBarHeight) {
+      const minScroll = Math.min(0, engine.height - appBarHeight - (todos.length * itemHeight) - fabSize - fabMargin * 2);
+      const clampedScrollY = Math.max(minScroll, Math.min(0, scrollY));
+      const listY = y - appBarHeight - clampedScrollY;
+      const index = Math.floor(listY / itemHeight);
+      
+      if (index >= 0 && index < todos.length && x >= contentX && x <= contentX + contentW) {
+        const todo = todos[index];
+        activeRippleItem = todo;
+        const maxR = Math.sqrt(contentW * contentW + itemHeight * itemHeight);
+        todo.ripples.push({
+          id: Date.now(),
+          x: x - contentX,
+          y: listY - (index * itemHeight),
+          radius: 0,
+          targetRadius: maxR,
+          alpha: 0,
+          state: 'growing'
+        });
+      }
+    }
+  };
 
-    // Check FAB click
+  engine.onPointerUpCb = (x, y) => {
+    if (activeRippleItem) {
+      activeRippleItem.ripples.forEach(r => {
+        if (r.state === 'growing') r.state = 'fading';
+      });
+      activeRippleItem = null;
+    }
+    
+    // Transfer fling velocity on release
+    if (engine.isDragging) {
+      velocityY = engine.getFlingVelocityY();
+    }
+  };
+
+  engine.onClick = (x, y) => {
     const fabX = engine.width - fabSize - fabMargin;
     const fabY = engine.height - fabSize - fabMargin;
     if (x >= fabX && x <= fabX + fabSize && y >= fabY && y <= fabY + fabSize) {
-      // Simulate native dialog without HTML
       const text = window.prompt('New Todo:');
       if (text && text.trim()) {
-        todos.unshift({ id: Date.now(), text: text.trim(), done: false });
+        todos.unshift({ id: Date.now(), text: text.trim(), done: false, ripples: [] });
       }
       return;
     }
 
-    // Check Todo item click
     if (y > appBarHeight) {
-      const listY = y - appBarHeight - scrollY;
+      const minScroll = Math.min(0, engine.height - appBarHeight - (todos.length * itemHeight) - fabSize - fabMargin * 2);
+      const clampedScrollY = Math.max(minScroll, Math.min(0, scrollY));
+      const listY = y - appBarHeight - clampedScrollY;
       const index = Math.floor(listY / itemHeight);
       if (index >= 0 && index < todos.length) {
-        const todo = todos[index];
-        todo.done = !todo.done;
-        
-        // Add ripple
-        todo.ripple = {
-          x: x - contentX,
-          y: listY - (index * itemHeight),
-          radius: 0,
-          alpha: 1,
-          active: true,
-        };
+        todos[index].done = !todos[index].done;
       }
     }
   };
 
   engine.onDraw = (ctx, width, height, dt) => {
-    // Physics
-    if (engine.isPointerDown && engine.isDragging) {
-      scrollY += engine.pointerDeltaY;
-      velocityY = engine.pointerDeltaY / dt;
-    } else {
-      scrollY += velocityY * dt;
-      velocityY *= friction;
-      if (Math.abs(velocityY) < 10) velocityY = 0;
-    }
-
-    // Bounds
-    const maxScroll = 0;
     const minScroll = Math.min(0, height - appBarHeight - (todos.length * itemHeight) - fabSize - fabMargin * 2);
-    if (scrollY > maxScroll) {
-      scrollY += (maxScroll - scrollY) * 10 * dt; // Spring back
-    } else if (scrollY < minScroll) {
-      scrollY += (minScroll - scrollY) * 10 * dt; // Spring back
-    }
+    
+    // ROCK-SOLID FLUTTER/ANDROID 12 PHYSICS
+    if (engine.isPointerDown) {
+      if (engine.isDragging) {
+        let dy = engine.pointerDeltaY;
+        
+        // 1. If currently stretched, absorb dy into stretch first
+        if (stretchAmount > 0) { // Stretched at top
+          const resistance = Math.max(0.05, 0.35 * (1 - stretchAmount / 300)); // Hard rubber resistance
+          stretchAmount += dy * resistance;
+          if (stretchAmount < 0) { // Crossed back to normal
+            dy = stretchAmount / resistance;
+            stretchAmount = 0;
+          } else {
+            dy = 0;
+          }
+        } else if (stretchAmount < 0) { // Stretched at bottom
+          const resistance = Math.max(0.05, 0.35 * (1 - Math.abs(stretchAmount) / 300)); // Hard rubber resistance
+          stretchAmount += dy * resistance;
+          if (stretchAmount > 0) { // Crossed back to normal
+            dy = stretchAmount / resistance;
+            stretchAmount = 0;
+          } else {
+            dy = 0;
+          }
+        }
 
-    // Background
-    ctx.fillStyle = colors.background;
-    ctx.fillRect(0, 0, width, height);
+        // 2. Apply remaining dy to scroll
+        if (dy !== 0) {
+          scrollY += dy;
+          // 3. If scroll hits bounds, convert overflow to stretch
+          if (scrollY > 0) {
+            stretchAmount += scrollY * 0.35; // Hard rubber scaling
+            scrollY = 0;
+          } else if (scrollY < minScroll) {
+            stretchAmount += (scrollY - minScroll) * 0.35; // Hard rubber scaling
+            scrollY = minScroll;
+          }
+        }
+        
+        // Cancel ripple if dragging starts
+        if (activeRippleItem) {
+          activeRippleItem.ripples.forEach(r => r.state = 'fading');
+          activeRippleItem = null;
+        }
+      }
+    } else {
+      // RELEASED STATE
+
+      // 1. Snapback stretch smoothly (Stable Exponential Decay, NO oscillating spring)
+      if (stretchAmount !== 0) {
+        stretchAmount += (0 - stretchAmount) * (1 - Math.exp(-16 * dt)); // Snaps back faster (hard rubber)
+        if (Math.abs(stretchAmount) < 0.5) stretchAmount = 0;
+      }
+
+      // 2. Momentum scroll
+      if (Math.abs(velocityY) > 0.1) {
+        scrollY += velocityY * dt;
+        velocityY *= Math.exp(-2.5 * dt); // Less friction (tidak peret, lebih meluncur)
+        
+        // If momentum hits the boundary, convert to stretch and STOP velocity
+        if (scrollY > 0) {
+          stretchAmount += scrollY * 0.06; // Flinging into top boundary (hard rubber absorbs less)
+          scrollY = 0;
+          velocityY = 0;
+        } else if (scrollY < minScroll) {
+          stretchAmount += (scrollY - minScroll) * 0.06; // Flinging into bottom boundary
+          scrollY = minScroll;
+          velocityY = 0;
+        }
+      } else {
+        velocityY = 0;
+      }
+    }
 
     const contentX = Math.max(0, (width - maxContentWidth) / 2);
     const contentW = Math.min(width, maxContentWidth);
 
-    // Draw List
+    ctx.fillStyle = colors.background;
+    ctx.fillRect(0, 0, width, height);
+
+    // Stretch Overscroll Effect (Purely Visual)
+    let stretchY = 1;
+    let originY = appBarHeight;
+
+    if (stretchAmount > 0) {
+      stretchY = 1 + (stretchAmount / height) * 0.15; // Reduced visual stretch (karet keras)
+      originY = appBarHeight;
+    } else if (stretchAmount < 0) {
+      stretchY = 1 + (Math.abs(stretchAmount) / height) * 0.15; // Reduced visual stretch (karet keras)
+      originY = height;
+    }
+
     ctx.save();
     ctx.beginPath();
     ctx.rect(contentX, appBarHeight, contentW, height - appBarHeight);
     ctx.clip();
 
+    if (stretchY !== 1) {
+      ctx.translate(0, originY);
+      ctx.scale(1, stretchY);
+      ctx.translate(0, -originY);
+    }
+
     todos.forEach((todo, i) => {
       const itemY = appBarHeight + scrollY + (i * itemHeight);
       
-      // Culling
-      if (itemY + itemHeight < appBarHeight || itemY > height) return;
+      if (itemY + itemHeight < appBarHeight - 200 || itemY > height + 200) return;
 
-      // Ripple animation
-      if (todo.ripple && todo.ripple.active) {
-        todo.ripple.radius += 800 * dt;
-        todo.ripple.alpha -= 2 * dt;
-        if (todo.ripple.alpha <= 0) {
-          todo.ripple.active = false;
+      // Update & Draw Ripples
+      todo.ripples.forEach(ripple => {
+        if (ripple.state === 'growing') {
+          // Slow but continuous growth to 100% while held down
+          ripple.radius += (ripple.targetRadius - ripple.radius) * 2 * dt + 100 * dt;
+          if (ripple.radius > ripple.targetRadius) ripple.radius = ripple.targetRadius;
+          ripple.alpha += (0.12 - ripple.alpha) * 15 * dt;
         } else {
-          ctx.save();
-          ctx.beginPath();
-          ctx.rect(contentX, itemY, contentW, itemHeight);
-          ctx.clip();
-          ctx.fillStyle = `rgba(208, 188, 255, ${todo.ripple.alpha * 0.12})`;
-          ctx.beginPath();
-          ctx.arc(contentX + todo.ripple.x, itemY + todo.ripple.y, todo.ripple.radius, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
+          // Fast expansion to corners when released
+          ripple.radius += (ripple.targetRadius - ripple.radius) * 15 * dt + 800 * dt;
+          ripple.alpha -= 0.5 * dt;
         }
+      });
+      todo.ripples = todo.ripples.filter(r => r.alpha > 0);
+
+      if (todo.ripples.length > 0) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(contentX, itemY, contentW, itemHeight);
+        ctx.clip();
+        todo.ripples.forEach(ripple => {
+          ctx.fillStyle = `rgba(208, 188, 255, ${Math.max(0, ripple.alpha)})`;
+          ctx.beginPath();
+          ctx.arc(contentX + ripple.x, itemY + ripple.y, ripple.radius, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.restore();
       }
 
-      // Checkbox
       const cbSize = 20;
       const cbX = contentX + 16;
       const cbY = itemY + (itemHeight - cbSize) / 2;
@@ -185,7 +298,6 @@ export function startApp(canvas: HTMLCanvasElement) {
         roundRect(ctx, cbX, cbY, cbSize, cbSize, 2);
         ctx.fill();
         
-        // Checkmark
         ctx.strokeStyle = colors.onPrimary;
         ctx.lineWidth = 2;
         ctx.lineCap = 'round';
@@ -202,13 +314,11 @@ export function startApp(canvas: HTMLCanvasElement) {
         ctx.stroke();
       }
 
-      // Text
       ctx.font = '16px system-ui, -apple-system, sans-serif';
       ctx.textBaseline = 'middle';
       if (todo.done) {
         ctx.fillStyle = colors.onSurfaceVariant;
         ctx.fillText(todo.text, cbX + cbSize + 16, itemY + itemHeight / 2);
-        // Strikethrough
         const textWidth = ctx.measureText(todo.text).width;
         ctx.strokeStyle = colors.onSurfaceVariant;
         ctx.lineWidth = 1;
@@ -221,7 +331,6 @@ export function startApp(canvas: HTMLCanvasElement) {
         ctx.fillText(todo.text, cbX + cbSize + 16, itemY + itemHeight / 2);
       }
 
-      // Divider
       if (i < todos.length - 1) {
         ctx.fillStyle = colors.surfaceContainer;
         ctx.fillRect(contentX + 16, itemY + itemHeight - 1, contentW - 32, 1);
@@ -232,7 +341,7 @@ export function startApp(canvas: HTMLCanvasElement) {
     // Draw App Bar
     ctx.fillStyle = colors.surface;
     ctx.fillRect(0, 0, width, appBarHeight);
-    if (scrollY < 0) {
+    if (scrollY < 0 || stretchAmount > 0) {
       drawShadow(ctx, 4, 2, 0.2);
       ctx.fillStyle = colors.surface;
       ctx.fillRect(0, 0, width, appBarHeight);
@@ -254,7 +363,6 @@ export function startApp(canvas: HTMLCanvasElement) {
     ctx.fill();
     clearShadow(ctx);
 
-    // FAB Icon (+)
     ctx.strokeStyle = colors.onPrimaryContainer;
     ctx.lineWidth = 2;
     ctx.lineCap = 'round';

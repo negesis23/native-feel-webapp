@@ -5,7 +5,6 @@ export class CanvasEngine {
   height: number = 0;
   dpr: number = 1;
 
-  // Input state
   pointerX: number = 0;
   pointerY: number = 0;
   isPointerDown: boolean = false;
@@ -17,13 +16,15 @@ export class CanvasEngine {
   downX: number = 0;
   downY: number = 0;
 
-  // Animation state
+  velocityTracker: { y: number, time: number }[] = [];
+
   lastTime: number = 0;
   animationFrameId: number = 0;
 
-  // Callbacks
   onDraw: (ctx: CanvasRenderingContext2D, width: number, height: number, dt: number) => void = () => {};
   onClick: (x: number, y: number) => void = () => {};
+  onPointerDownCb: (x: number, y: number) => void = () => {};
+  onPointerUpCb: (x: number, y: number) => void = () => {};
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -80,6 +81,8 @@ export class CanvasEngine {
     this.downY = e.clientY;
     this.isDragging = false;
     this.pointerDeltaY = 0;
+    this.velocityTracker = [{ y: this.pointerY, time: performance.now() }];
+    this.onPointerDownCb(this.pointerX, this.pointerY);
   }
 
   handlePointerMove(e: PointerEvent) {
@@ -87,9 +90,13 @@ export class CanvasEngine {
     this.pointerY = e.clientY;
     
     if (this.isPointerDown) {
-      this.pointerDeltaY = this.pointerY - this.lastPointerY;
+      // Accumulate delta in case multiple events fire per frame
+      this.pointerDeltaY += (this.pointerY - this.lastPointerY);
       this.lastPointerY = this.pointerY;
       
+      this.velocityTracker.push({ y: this.pointerY, time: performance.now() });
+      if (this.velocityTracker.length > 5) this.velocityTracker.shift();
+
       if (!this.isDragging) {
         const dx = this.pointerX - this.downX;
         const dy = this.pointerY - this.downY;
@@ -102,21 +109,37 @@ export class CanvasEngine {
 
   handlePointerUp(e: PointerEvent) {
     this.isPointerDown = false;
+    this.onPointerUpCb(this.pointerX, this.pointerY);
     if (!this.isDragging) {
       this.justClicked = true;
       this.onClick(this.pointerX, this.pointerY);
     }
   }
 
+  getFlingVelocityY(): number {
+    if (this.velocityTracker.length < 2) return 0;
+    const first = this.velocityTracker[0];
+    const last = this.velocityTracker[this.velocityTracker.length - 1];
+    const dt = (last.time - first.time) / 1000;
+    if (dt <= 0) return 0;
+    
+    // If user held finger still for > 50ms before releasing, kill the momentum
+    if (performance.now() - last.time > 50) return 0;
+    
+    let v = (last.y - first.y) / dt;
+    if (v > 5000) v = 5000;
+    if (v < -5000) v = -5000;
+    return v;
+  }
+
   loop(time: number) {
-    const dt = (time - this.lastTime) / 1000;
+    const dt = Math.min((time - this.lastTime) / 1000, 0.1); // Cap dt to prevent huge jumps on lag
     this.lastTime = time;
 
     this.onDraw(this.ctx, this.width, this.height, dt);
 
-    // Reset per-frame state
     this.justClicked = false;
-    this.pointerDeltaY = 0;
+    this.pointerDeltaY = 0; // Reset delta after drawing
 
     this.animationFrameId = requestAnimationFrame(this.loop);
   }
