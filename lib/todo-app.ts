@@ -314,7 +314,7 @@ export function startApp(canvas: HTMLCanvasElement) {
         ctx.stroke();
       }
 
-      ctx.font = '16px system-ui, -apple-system, sans-serif';
+      ctx.font = '16px "Google Sans Flex", system-ui, -apple-system, sans-serif';
       ctx.textBaseline = 'middle';
       if (todo.done) {
         ctx.fillStyle = colors.onSurfaceVariant;
@@ -349,7 +349,7 @@ export function startApp(canvas: HTMLCanvasElement) {
     }
     
     ctx.fillStyle = colors.onSurface;
-    ctx.font = '500 22px system-ui, -apple-system, sans-serif';
+    ctx.font = '500 22px "Google Sans Flex", system-ui, -apple-system, sans-serif';
     ctx.textBaseline = 'middle';
     ctx.fillText('Native Canvas Todo', contentX + 16, appBarHeight / 2);
 
