@@ -1,0 +1,5 @@
+{
+  "name": "Native Canvas Todo",
+  "description": "A Todo app built with a custom GPU-accelerated Canvas graphics engine, bypassing HTML/CSS/DOM for a Flutter-like native feel.",
+  "requestFramePermissions": []
+}
