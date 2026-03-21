@@ -49,14 +49,14 @@ export class Column extends UIComponent {
       
       // 1. If currently stretched, absorb dy into stretch first
       if (this.stretchAmount > 0) { // Stretched at top
-        const resistance = Math.max(0.05, 0.35 * (1 - this.stretchAmount / 300));
+        const resistance = Math.max(0.05, 0.15 * (1 - this.stretchAmount / 150));
         this.stretchAmount += dy * resistance;
         if (this.stretchAmount < 0) {
           this.scrollY += this.stretchAmount / resistance;
           this.stretchAmount = 0;
         }
       } else if (this.stretchAmount < 0) { // Stretched at bottom
-        const resistance = Math.max(0.05, 0.35 * (1 - Math.abs(this.stretchAmount) / 300));
+        const resistance = Math.max(0.05, 0.35 * (1 - Math.abs(this.stretchAmount) / 150));
         this.stretchAmount += dy * resistance;
         if (this.stretchAmount > 0) {
           this.scrollY += this.stretchAmount / resistance;
@@ -143,7 +143,7 @@ export class Column extends UIComponent {
         
         if (!this.isDragging) {
           if (this.stretchAmount !== 0) {
-            this.stretchAmount += (0 - this.stretchAmount) * (1 - Math.exp(-16 * dt));
+            this.stretchAmount += (0 - this.stretchAmount) * (1 - Math.exp(-25 * dt));
             if (Math.abs(this.stretchAmount) < 0.5) this.stretchAmount = 0;
             engine.requestRender();
           }
