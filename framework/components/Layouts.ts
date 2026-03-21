@@ -173,7 +173,7 @@ export class Column extends UIComponent {
       const cw = this.width - this.padding.left - this.padding.right;
       for (const child of this.children) {
         child.layout(this.x + this.padding.left, cy, cw, child.height);
-        cy += child.height + this.gap;
+        cy += child.height + this.gap; 
       }
     }
 
