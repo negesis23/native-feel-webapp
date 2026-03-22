@@ -36,6 +36,7 @@ export abstract class UIComponent {
   isHovered: boolean = false;
   isFocused: boolean = false;
   isPressed: boolean = false;
+  needsScrollIntoView: boolean = false;
   
   ripples: Ripple[] = [];
 

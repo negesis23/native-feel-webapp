@@ -124,20 +124,36 @@ export default function CanvasApp() {
 
     const handleResize = () => {
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = window.innerWidth * dpr;
-      canvas.height = window.innerHeight * dpr;
-      canvas.style.width = `${window.innerWidth}px`;
-      canvas.style.height = `${window.innerHeight}px`;
+      const width = window.visualViewport?.width || window.innerWidth;
+      const height = window.visualViewport?.height || window.innerHeight;
+      
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.scale(dpr, dpr);
       }
+      
+      if (engineRef.current && engineRef.current.focusedComponent) {
+        engineRef.current.focusedComponent.needsScrollIntoView = true;
+      }
+      
       engineRef.current?.requestRender();
     };
     window.addEventListener('resize', handleResize);
+    window.visualViewport?.addEventListener('resize', handleResize);
+    const handleScroll = () => {
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: false });
+
     return () => {
       window.removeEventListener('resize', handleResize);
+      window.visualViewport?.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', handleScroll);
     };
   }, [todos, inputValue, currentPath]);
 

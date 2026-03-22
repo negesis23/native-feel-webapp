@@ -100,10 +100,11 @@ export class IconButton extends UIComponent {
     // Draw Icon
     ctx.fillStyle = fg;
     ctx.font = '24px "Material Symbols Outlined"';
-    ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
-    // Material symbols have a slight optical offset, adjust y by +1
-    ctx.fillText(this.icon, this.x + this.width / 2, this.y + this.height / 2 + 1);
+    ctx.textBaseline = 'alphabetic';
+    const metrics = ctx.measureText(this.icon);
+    const yOffset = (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) / 2;
+    ctx.fillText(this.icon, this.x + this.width / 2, this.y + this.height / 2 + yOffset);
     ctx.textAlign = 'left';
   }
 }

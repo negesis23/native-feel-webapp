@@ -13,9 +13,11 @@ export class Icon extends UIComponent {
   render(ctx: CanvasRenderingContext2D, theme: Theme, dt: number, engine: FrameworkEngine) {
     ctx.font = '24px "Material Symbols Outlined"';
     ctx.fillStyle = this.color || theme.onSurface;
-    ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
-    ctx.fillText(this.icon, this.x + 12, this.y + 12);
+    ctx.textBaseline = 'alphabetic';
+    const metrics = ctx.measureText(this.icon);
+    const yOffset = (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) / 2;
+    ctx.fillText(this.icon, this.x + 12, this.y + 12 + yOffset);
     ctx.textAlign = 'left';
   }
 }

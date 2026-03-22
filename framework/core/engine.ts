@@ -11,10 +11,16 @@ export class FrameworkEngine {
   
   private isDirty = true;
   private lastTime = performance.now();
-  private textInput: HTMLTextAreaElement;
+  private singleLineInput: HTMLInputElement;
+  private multiLineInput: HTMLTextAreaElement;
+  public get textInput(): HTMLInputElement | HTMLTextAreaElement {
+    if (this.focusedComponent && (this.focusedComponent as any).multiline) {
+      return this.multiLineInput;
+    }
+    return this.singleLineInput;
+  }
 
   private isDestroyed = false;
-  scrollYOffset: number = 0;
   
   private pointerDownX: number = 0;
   private pointerDownY: number = 0;
@@ -26,75 +32,71 @@ export class FrameworkEngine {
     this.root = root;
     this.theme = generateTheme(seedColor, isDark);
     
-    this.textInput = document.createElement('textarea');
-    this.textInput.style.position = 'fixed';
-    this.textInput.style.opacity = '0';
-    this.textInput.style.pointerEvents = 'none';
-    this.textInput.style.top = '0px';
-    this.textInput.style.left = '0px';
-    this.textInput.style.width = '1px';
-    this.textInput.style.height = '1px';
-    this.textInput.style.padding = '0';
-    this.textInput.style.margin = '0';
-    this.textInput.style.display = 'none';
-    this.textInput.style.zIndex = '-1';
+    const setupInput = (input: HTMLElement) => {
+      input.style.position = 'fixed';
+      input.style.opacity = '0';
+      input.style.pointerEvents = 'none';
+      input.style.top = '0px';
+      input.style.left = '0px';
+      input.style.width = '1px';
+      input.style.height = '1px';
+      input.style.padding = '0';
+      input.style.margin = '0';
+      input.style.display = 'none';
+      input.style.zIndex = '-1';
+      document.body.appendChild(input);
+    };
+
+    this.singleLineInput = document.createElement('input');
+    this.singleLineInput.type = 'text';
+    this.singleLineInput.enterKeyHint = 'go';
+    setupInput(this.singleLineInput);
+
+    this.multiLineInput = document.createElement('textarea');
+    setupInput(this.multiLineInput);
     
-    // We need to append it to the body
-    document.body.appendChild(this.textInput);
-    
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', () => {
+    const setupListeners = (input: HTMLInputElement | HTMLTextAreaElement) => {
+      input.addEventListener('keydown', (e) => {
+        const evt = e as KeyboardEvent;
         if (this.focusedComponent && (this.focusedComponent as any).isTextInput) {
-          const vpHeight = window.visualViewport!.height;
-          const compBottom = this.focusedComponent.y + this.focusedComponent.height + this.scrollYOffset;
-          if (compBottom > vpHeight) {
-            this.scrollYOffset = vpHeight - (this.focusedComponent.y + this.focusedComponent.height + 20);
-          } else if (window.visualViewport!.height === window.innerHeight) {
-            this.scrollYOffset = 0;
+          const tf = this.focusedComponent as any;
+          if (evt.key === 'Enter' && !tf.multiline) {
+            evt.preventDefault();
+            if (tf.onSubmit) tf.onSubmit(tf.value);
+            input.blur();
           }
-          this.requestRender();
-        } else {
-          this.scrollYOffset = 0;
+        }
+      });
+
+      input.addEventListener('input', (e) => {
+        if (this.focusedComponent && (this.focusedComponent as any).isTextInput) {
+          const tf = this.focusedComponent as any;
+          tf.value = input.value;
+          tf.reportedValues.add(input.value);
+          tf.cursorIndex = input.selectionStart ?? tf.value.length;
+          tf.needsScrollIntoView = true;
+          if (tf.onChange) {
+            tf.onChange(tf.value);
+          }
           this.requestRender();
         }
       });
-    }
 
-    this.textInput.addEventListener('keydown', (e) => {
-      if (this.focusedComponent && (this.focusedComponent as any).isTextInput) {
-        const tf = this.focusedComponent as any;
-        if (e.key === 'Enter' && !tf.multiline) {
-          e.preventDefault();
-          if (tf.onSubmit) tf.onSubmit(tf.value);
-          this.textInput.blur();
+      input.addEventListener('blur', () => {
+        if (this.focusedComponent && (this.focusedComponent as any).isTextInput) {
+          this.focusedComponent.isFocused = false;
+          this.focusedComponent = null;
+          input.style.display = 'none';
+          this.requestRender();
         }
-      }
-    });
+      });
+    };
 
-    this.textInput.addEventListener('input', (e) => {
-      if (this.focusedComponent && (this.focusedComponent as any).isTextInput) {
-        const tf = this.focusedComponent as any;
-        tf.value = this.textInput.value;
-        tf.reportedValues.add(this.textInput.value);
-        tf.cursorIndex = this.textInput.selectionStart ?? tf.value.length;
-        if (tf.onChange) {
-          tf.onChange(tf.value);
-        }
-        this.requestRender();
-      }
-    });
-
-    this.textInput.addEventListener('blur', () => {
-      if (this.focusedComponent && (this.focusedComponent as any).isTextInput) {
-        this.focusedComponent.isFocused = false;
-        this.focusedComponent = null;
-        this.textInput.style.display = 'none';
-        this.requestRender();
-      }
-    });
+    setupListeners(this.singleLineInput);
+    setupListeners(this.multiLineInput);
 
     document.addEventListener('selectionchange', () => {
-      if (document.activeElement === this.textInput && this.focusedComponent && (this.focusedComponent as any).isTextInput) {
+      if ((document.activeElement === this.singleLineInput || document.activeElement === this.multiLineInput) && this.focusedComponent && (this.focusedComponent as any).isTextInput) {
         const tf = this.focusedComponent as any;
         tf.cursorIndex = this.textInput.selectionStart ?? 0;
         this.requestRender();
@@ -207,7 +209,7 @@ export class FrameworkEngine {
     this.canvas.addEventListener('pointerdown', (e) => {
       const rect = this.canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top - this.scrollYOffset;
+      const y = e.clientY - rect.top;
       
       this.pointerDownX = x;
       this.pointerDownY = y;
@@ -218,8 +220,10 @@ export class FrameworkEngine {
       if (this.focusedComponent && this.focusedComponent !== hit) {
         this.focusedComponent.isFocused = false;
         this.focusedComponent = null;
-        this.textInput.style.display = 'none';
-        this.textInput.blur();
+        this.singleLineInput.style.display = 'none';
+        this.multiLineInput.style.display = 'none';
+        this.singleLineInput.blur();
+        this.multiLineInput.blur();
       }
       
       if (hit) {
@@ -231,6 +235,7 @@ export class FrameworkEngine {
           e.preventDefault();
           this.focusedComponent = hit;
           hit.isFocused = true;
+          hit.needsScrollIntoView = true;
           this.textInput.style.display = 'block';
           if (this.textInput.value !== (hit as any).value) {
             this.textInput.value = (hit as any).value || '';
@@ -245,8 +250,10 @@ export class FrameworkEngine {
         }
       } else {
         this.focusedComponent = null;
-        this.textInput.style.display = 'none';
-        this.textInput.blur();
+        this.singleLineInput.style.display = 'none';
+        this.multiLineInput.style.display = 'none';
+        this.singleLineInput.blur();
+        this.multiLineInput.blur();
       }
       this.requestRender();
     });
@@ -254,7 +261,7 @@ export class FrameworkEngine {
     this.canvas.addEventListener('pointerup', (e) => {
       const rect = this.canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top - this.scrollYOffset;
+      const y = e.clientY - rect.top;
       
       const hit = this.root.hitTest(x, y);
       
@@ -285,7 +292,7 @@ export class FrameworkEngine {
     this.canvas.addEventListener('pointermove', (e) => {
       const rect = this.canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top - this.scrollYOffset;
+      const y = e.clientY - rect.top;
       
       if (this.pressedComponent) {
         if (Math.abs(x - this.pointerDownX) > 25 || Math.abs(y - this.pointerDownY) > 25) {
@@ -324,6 +331,42 @@ export class FrameworkEngine {
     requestAnimationFrame(this.loop);
   }
 
+  private ensureVisible(component: UIComponent): boolean {
+    let adjusted = false;
+    let node: UIComponent | undefined = component;
+    
+    // Find scrollable parent
+    while (node && node.parent) {
+      const parentNode: UIComponent = node.parent;
+      if ((parentNode as any).scrollable) {
+        const col = parentNode as any;
+        // Check if component is out of view
+        const topOverflow = parentNode.y - component.y;
+        const bottomOverflow = (component.y + component.height) - (parentNode.y + parentNode.height);
+        
+        const oldScrollY = col.scrollY;
+        
+        if (bottomOverflow > 0) {
+          col.scrollY -= bottomOverflow + 20;
+        } else if (topOverflow > 0) {
+          col.scrollY += topOverflow + 20;
+        }
+        
+        const minScroll = Math.min(0, col.height - col.contentHeight);
+        if (col.scrollY < minScroll) col.scrollY = minScroll;
+        if (col.scrollY > 0) col.scrollY = 0;
+        
+        if (col.scrollY !== oldScrollY) {
+          adjusted = true;
+        }
+        
+        break; // Only adjust the immediate scrollable parent
+      }
+      node = parentNode;
+    }
+    return adjusted;
+  }
+
   private render(dt: number) {
     const dpr = window.devicePixelRatio || 1;
     const width = this.canvas.width / dpr;
@@ -335,8 +378,14 @@ export class FrameworkEngine {
     this.root.measure(this.ctx, { minWidth: width, maxWidth: width, minHeight: height, maxHeight: height });
     this.root.layout(0, 0, width, height);
 
+    if (this.focusedComponent && this.focusedComponent.needsScrollIntoView) {
+      if (this.ensureVisible(this.focusedComponent)) {
+        this.root.layout(0, 0, width, height);
+      }
+      this.focusedComponent.needsScrollIntoView = false;
+    }
+
     this.ctx.save();
-    this.ctx.translate(0, this.scrollYOffset);
     // Pass engine reference so components can request render during animations
     this.root.render(this.ctx, this.theme, dt, this);
     this.ctx.restore();
@@ -344,8 +393,11 @@ export class FrameworkEngine {
 
   destroy() {
     this.isDestroyed = true;
-    if (this.textInput && this.textInput.parentNode) {
-      this.textInput.parentNode.removeChild(this.textInput);
+    if (this.singleLineInput && this.singleLineInput.parentNode) {
+      this.singleLineInput.parentNode.removeChild(this.singleLineInput);
+    }
+    if (this.multiLineInput && this.multiLineInput.parentNode) {
+      this.multiLineInput.parentNode.removeChild(this.multiLineInput);
     }
   }
 }

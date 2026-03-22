@@ -18,7 +18,7 @@ export class TextField extends UIComponent {
   
   showTooltip: boolean = false;
   private pressTimer: any;
-  private draggingHandle: 'start' | 'end' | null = null;
+  private draggingHandle: 'start' | 'end' | 'cursor' | null = null;
   
   private scrollX: number = 0;
   private scrollY: number = 0;
@@ -82,12 +82,12 @@ export class TextField extends UIComponent {
         const endY = endPos.y - 10 - this.scrollY;
         const endTipY = endY + cursorHeight;
         
-        if (Math.hypot(x - startX, y - (startTipY + handleRadius)) < handleRadius * 2) {
+        if (Math.hypot(x - (startX - handleRadius), y - (startTipY + handleRadius)) < handleRadius * 2) {
           this.draggingHandle = 'start';
           this.consumedClick = true;
           return;
         }
-        if (Math.hypot(x - endX, y - (endTipY + handleRadius)) < handleRadius * 2) {
+        if (Math.hypot(x - (endX + handleRadius), y - (endTipY + handleRadius)) < handleRadius * 2) {
           this.draggingHandle = 'end';
           this.consumedClick = true;
           return;
@@ -98,8 +98,8 @@ export class TextField extends UIComponent {
         const cursorY = cursorPos.y - 10 - this.scrollY;
         const tipY = cursorY + cursorHeight;
         
-        if (Math.hypot(x - visualCursorX, y - (tipY + handleRadius)) < handleRadius * 2) {
-          this.draggingHandle = 'end';
+        if (Math.hypot(x - visualCursorX, y - (tipY + handleRadius * 1.5)) < handleRadius * 2) {
+          this.draggingHandle = 'cursor';
           this.consumedClick = true;
           return;
         }
@@ -245,7 +245,10 @@ export class TextField extends UIComponent {
         let newStart = textInput.selectionStart ?? 0;
         let newEnd = textInput.selectionEnd ?? 0;
         
-        if (this.draggingHandle === 'start') {
+        if (this.draggingHandle === 'cursor') {
+          newStart = closestIdx;
+          newEnd = closestIdx;
+        } else if (this.draggingHandle === 'start') {
           if (closestIdx > newEnd) {
             this.draggingHandle = 'end';
             newStart = newEnd;

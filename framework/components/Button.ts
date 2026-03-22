@@ -103,24 +103,28 @@ export class Button extends UIComponent {
 
     // Draw Content
     ctx.fillStyle = fg;
-    ctx.textBaseline = 'middle';
+    ctx.textBaseline = 'alphabetic';
     
     let startX = this.x + this.width / 2;
     if (this.icon) {
-      ctx.font = '14px "Google Sans Flex", sans-serif';
+      ctx.font = '500 14px "Google Sans Flex", sans-serif';
       const textWidth = ctx.measureText(this.text).width;
       const totalWidth = 18 + 8 + textWidth;
       startX = this.x + (this.width - totalWidth) / 2;
       
       ctx.font = '18px "Material Symbols Outlined"';
       ctx.textAlign = 'left';
-      ctx.fillText(this.icon, startX, this.y + this.height / 2);
+      const iconMetrics = ctx.measureText(this.icon);
+      const iconYOffset = (iconMetrics.actualBoundingBoxAscent - iconMetrics.actualBoundingBoxDescent) / 2;
+      ctx.fillText(this.icon, startX, this.y + this.height / 2 + iconYOffset);
       startX += 18 + 8;
     }
 
     ctx.font = '500 14px "Google Sans Flex", sans-serif';
     ctx.textAlign = this.icon ? 'left' : 'center';
-    ctx.fillText(this.text, startX, this.y + this.height / 2);
+    const textMetrics = ctx.measureText(this.text);
+    const textYOffset = (textMetrics.actualBoundingBoxAscent - textMetrics.actualBoundingBoxDescent) / 2;
+    ctx.fillText(this.text, startX, this.y + this.height / 2 + textYOffset);
     ctx.textAlign = 'left';
   }
 }
