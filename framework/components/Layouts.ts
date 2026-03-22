@@ -7,6 +7,8 @@ export class Column extends UIComponent {
   bg?: string;
   radius: number = 0;
   scrollable: boolean = false;
+  justifyContent: 'start' | 'center' | 'end' | 'space-between' | 'space-around' | 'space-evenly' = 'start';
+  alignItems: 'start' | 'center' | 'end' | 'stretch' = 'stretch';
 
   // Physics state
   scrollY: number = 0;
@@ -38,7 +40,9 @@ export class Column extends UIComponent {
       const dy = y - this.lastY;
       
       if (dt > 0) {
-        this.velocityY = dy / dt;
+        // Smooth out velocity to prevent erratic spikes
+        const currentVelocity = dy / dt;
+        this.velocityY = this.velocityY * 0.4 + currentVelocity * 0.6;
       }
       
       this.lastY = y;
@@ -69,9 +73,11 @@ export class Column extends UIComponent {
           // 3. If scroll hits bounds, convert overflow to stretch
           if (this.scrollY > 0) {
             this.stretchAmount += this.scrollY * 0.35;
+            if (this.stretchAmount > 100) this.stretchAmount = 100 + (this.stretchAmount - 100) * 0.1;
             this.scrollY = 0;
           } else if (this.scrollY < minScroll) {
             this.stretchAmount += (this.scrollY - minScroll) * 0.35;
+            if (this.stretchAmount < -100) this.stretchAmount = -100 + (this.stretchAmount + 100) * 0.1;
             this.scrollY = minScroll;
           }
         }
@@ -123,9 +129,49 @@ export class Column extends UIComponent {
     super.layout(x, y, width, height);
     let cy = y + this.padding.top + (this.scrollable ? this.scrollY : 0);
     const cw = width - this.padding.left - this.padding.right;
+    
+    let totalContentHeight = 0;
+    for (const child of this.children) totalContentHeight += child.height;
+    
+    let currentGap = this.gap;
+    if (!this.scrollable && this.children.length > 0) {
+      if (this.justifyContent === 'start' || this.justifyContent === 'center' || this.justifyContent === 'end') {
+        const availableSpace = height - this.padding.top - this.padding.bottom - totalContentHeight - this.gap * Math.max(0, this.children.length - 1);
+        if (this.justifyContent === 'center') {
+          cy += availableSpace / 2;
+        } else if (this.justifyContent === 'end') {
+          cy += availableSpace;
+        }
+      } else {
+        const availableSpace = height - this.padding.top - this.padding.bottom - totalContentHeight;
+        if (this.justifyContent === 'space-between') {
+          if (this.children.length > 1) currentGap = availableSpace / (this.children.length - 1);
+          else currentGap = 0;
+        } else if (this.justifyContent === 'space-around') {
+          currentGap = availableSpace / this.children.length;
+          cy += currentGap / 2;
+        } else if (this.justifyContent === 'space-evenly') {
+          currentGap = availableSpace / (this.children.length + 1);
+          cy += currentGap;
+        }
+      }
+    }
+
     for (const child of this.children) {
-      child.layout(x + this.padding.left, cy, cw, child.height);
-      cy += child.height + this.gap;
+      let cx = x + this.padding.left;
+      let childWidth = cw;
+      if (this.alignItems === 'center') {
+        cx += (cw - child.width) / 2;
+        childWidth = child.width;
+      } else if (this.alignItems === 'end') {
+        cx += cw - child.width;
+        childWidth = child.width;
+      } else if (this.alignItems === 'start') {
+        childWidth = child.width;
+      }
+      
+      child.layout(cx, cy, childWidth, child.height);
+      cy += child.height + currentGap;
     }
   }
   
@@ -150,16 +196,19 @@ export class Column extends UIComponent {
           
           if (Math.abs(this.velocityY) > 0.1) {
             this.scrollY += this.velocityY * dt;
-            this.velocityY *= Math.exp(-2.5 * dt);
+            // Increase friction from -2.5 to -5.0 to make it stop faster
+            this.velocityY *= Math.exp(-5.0 * dt);
             
             if (this.scrollY > 0) {
-              this.stretchAmount += this.scrollY;
+              this.stretchAmount += this.scrollY * 0.5; // Dampen the impact
+              if (this.stretchAmount > 100) this.stretchAmount = 100 + (this.stretchAmount - 100) * 0.1; // Soft clamp
               this.scrollY = 0;
-              this.velocityY *= Math.exp(-15 * dt); // Decay faster when stretching
+              this.velocityY = 0; // Kill velocity to prevent further extreme stretch
             } else if (this.scrollY < minScroll) {
-              this.stretchAmount += (this.scrollY - minScroll);
+              this.stretchAmount += (this.scrollY - minScroll) * 0.5; // Dampen the impact
+              if (this.stretchAmount < -100) this.stretchAmount = -100 + (this.stretchAmount + 100) * 0.1; // Soft clamp
               this.scrollY = minScroll;
-              this.velocityY *= Math.exp(-15 * dt); // Decay faster when stretching
+              this.velocityY = 0; // Kill velocity to prevent further extreme stretch
             }
             engine.requestRender();
           } else {
@@ -172,7 +221,18 @@ export class Column extends UIComponent {
       let cy = this.y + this.padding.top + this.scrollY;
       const cw = this.width - this.padding.left - this.padding.right;
       for (const child of this.children) {
-        child.layout(this.x + this.padding.left, cy, cw, child.height);
+        let cx = this.x + this.padding.left;
+        let childWidth = cw;
+        if (this.alignItems === 'center') {
+          cx += (cw - child.width) / 2;
+          childWidth = child.width;
+        } else if (this.alignItems === 'end') {
+          cx += cw - child.width;
+          childWidth = child.width;
+        } else if (this.alignItems === 'start') {
+          childWidth = child.width;
+        }
+        child.layout(cx, cy, childWidth, child.height);
         cy += child.height + this.gap; 
       }
     }
@@ -225,6 +285,8 @@ export class Row extends UIComponent {
   gap: number = 0;
   bg?: string;
   radius: number = 0;
+  justifyContent: 'start' | 'center' | 'end' | 'space-between' | 'space-around' | 'space-evenly' = 'start';
+  alignItems: 'start' | 'center' | 'end' | 'stretch' = 'center';
 
   measure(ctx: CanvasRenderingContext2D, constraints: BoxConstraints) {
     let totalWidth = this.padding.left + this.padding.right;
@@ -262,9 +324,49 @@ export class Row extends UIComponent {
     super.layout(x, y, width, height);
     let cx = x + this.padding.left;
     const ch = height - this.padding.top - this.padding.bottom;
+    
+    let totalContentWidth = 0;
+    for (const child of this.children) totalContentWidth += child.width;
+    
+    let currentGap = this.gap;
+    if (this.children.length > 0) {
+      if (this.justifyContent === 'start' || this.justifyContent === 'center' || this.justifyContent === 'end') {
+        const availableSpace = width - this.padding.left - this.padding.right - totalContentWidth - this.gap * Math.max(0, this.children.length - 1);
+        if (this.justifyContent === 'center') {
+          cx += availableSpace / 2;
+        } else if (this.justifyContent === 'end') {
+          cx += availableSpace;
+        }
+      } else {
+        const availableSpace = width - this.padding.left - this.padding.right - totalContentWidth;
+        if (this.justifyContent === 'space-between') {
+          if (this.children.length > 1) currentGap = availableSpace / (this.children.length - 1);
+          else currentGap = 0;
+        } else if (this.justifyContent === 'space-around') {
+          currentGap = availableSpace / this.children.length;
+          cx += currentGap / 2;
+        } else if (this.justifyContent === 'space-evenly') {
+          currentGap = availableSpace / (this.children.length + 1);
+          cx += currentGap;
+        }
+      }
+    }
+
     for (const child of this.children) {
-      child.layout(cx, y + this.padding.top + (ch - child.height)/2, child.width, child.height);
-      cx += child.width + this.gap;
+      let cy = y + this.padding.top;
+      let childHeight = ch;
+      if (this.alignItems === 'center') {
+        cy += (ch - child.height) / 2;
+        childHeight = child.height;
+      } else if (this.alignItems === 'end') {
+        cy += ch - child.height;
+        childHeight = child.height;
+      } else if (this.alignItems === 'start') {
+        childHeight = child.height;
+      }
+      
+      child.layout(cx, cy, child.width, childHeight);
+      cx += child.width + currentGap;
     }
   }
   render(ctx: CanvasRenderingContext2D, theme: Theme, dt: number, engine: FrameworkEngine) {

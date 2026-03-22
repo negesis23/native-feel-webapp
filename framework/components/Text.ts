@@ -44,8 +44,8 @@ export class Text extends UIComponent {
     this.lineHeight = fontSize * 1.2;
     
     return {
-      width: Math.min(constraints.maxWidth, maxWidth),
-      height: this.lines.length * this.lineHeight
+      width: Math.max(constraints.minWidth || 0, Math.min(constraints.maxWidth, maxWidth)),
+      height: Math.max(constraints.minHeight || 0, this.lines.length * this.lineHeight)
     };
   }
 

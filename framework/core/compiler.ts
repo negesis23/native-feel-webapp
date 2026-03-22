@@ -49,6 +49,8 @@ export class Compiler {
       else if (name === 'bg' && (comp instanceof Column || comp instanceof Row)) (comp as any).bg = value;
       else if (name === 'radius' && (comp instanceof Column || comp instanceof Row)) (comp as any).radius = parseFloat(value);
       else if (name === 'scrollable' && comp instanceof Column) comp.scrollable = value === 'true';
+      else if ((name === 'justify-content' || name === 'justify') && (comp instanceof Column || comp instanceof Row)) (comp as any).justifyContent = value;
+      else if ((name === 'align-items' || name === 'align') && (comp instanceof Column || comp instanceof Row)) (comp as any).alignItems = value;
       else if (name === 'text' && comp instanceof Text) comp.text = value;
       else if (name === 'text' && comp instanceof Button) comp.text = value;
       else if (name === 'variant' && comp instanceof Text) comp.variant = value as any;
@@ -57,17 +59,22 @@ export class Compiler {
       else if (name === 'icon' && comp instanceof Button) comp.icon = value;
       else if (name === 'icon' && comp instanceof IconButton) comp.icon = value;
       else if (name === 'placeholder' && comp instanceof TextField) comp.placeholder = value;
+      else if (name === 'multiline' && comp instanceof TextField) comp.multiline = value === 'true';
       else if (name === 'icon' && comp instanceof Icon) comp.icon = value;
       else if (name === 'checked' && comp instanceof Checkbox) comp.checked = value === 'true';
       
       else if (name.startsWith('bind-')) {
         const prop = name.split('-')[1];
         (comp as any)[prop] = context[value];
+        if (prop === 'value' && comp instanceof TextField) {
+          (comp as any).propValue = context[value];
+        }
       }
       else if (name.startsWith('on-')) {
         const event = name.split('-')[1];
         if (event === 'click') comp.onClick = context[value];
         if (event === 'change') (comp as any).onChange = context[value];
+        if (event === 'submit') (comp as any).onSubmit = context[value];
       }
     }
 

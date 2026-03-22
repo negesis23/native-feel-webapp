@@ -55,7 +55,7 @@ export class IconButton extends UIComponent {
     if (bg !== 'transparent') {
       ctx.fillStyle = bg;
       ctx.beginPath();
-      ctx.arc(this.x + 20, this.y + 20, 20, 0, Math.PI * 2);
+      ctx.arc(this.x + this.width / 2, this.y + this.height / 2, Math.min(this.width, this.height) / 2, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -64,7 +64,7 @@ export class IconButton extends UIComponent {
       ctx.strokeStyle = border;
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(this.x + 20, this.y + 20, 19.5, 0, Math.PI * 2);
+      ctx.arc(this.x + this.width / 2, this.y + this.height / 2, Math.min(this.width, this.height) / 2 - 0.5, 0, Math.PI * 2);
       ctx.stroke();
     }
 
@@ -72,7 +72,7 @@ export class IconButton extends UIComponent {
     if (this.ripples.length > 0) {
       ctx.save();
       ctx.beginPath();
-      ctx.arc(this.x + 20, this.y + 20, 20, 0, Math.PI * 2);
+      ctx.arc(this.x + this.width / 2, this.y + this.height / 2, Math.min(this.width, this.height) / 2, 0, Math.PI * 2);
       ctx.clip();
 
       this.ripples.forEach(ripple => {
@@ -102,7 +102,8 @@ export class IconButton extends UIComponent {
     ctx.font = '24px "Material Symbols Outlined"';
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
-    ctx.fillText(this.icon, this.x + 20, this.y + 20);
+    // Material symbols have a slight optical offset, adjust y by +1
+    ctx.fillText(this.icon, this.x + this.width / 2, this.y + this.height / 2 + 1);
     ctx.textAlign = 'left';
   }
 }

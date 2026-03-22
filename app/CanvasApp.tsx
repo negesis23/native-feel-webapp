@@ -81,8 +81,8 @@ export default function CanvasApp() {
             </Row>
           `).join('')}
         </Column>
-        <Row padding="16" gap="12" bg="surfaceVariant">
-          <TextField id="todoInput" flex="1" placeholder="Add a new task..." bind-value="inputValue" on-change="onInputChange" />
+        <Row padding="16" gap="12" bg="surfaceVariant" align-items="center">
+          <TextField id="todoInput" flex="1" placeholder="Add a new task..." bind-value="inputValue" on-change="onInputChange" on-submit="addTodo" />
           <Button id="addBtn" text="Add" variant="filled" icon="add" on-click="addTodo" />
         </Row>
       </Column>
@@ -114,7 +114,7 @@ export default function CanvasApp() {
       const root = Compiler.compile(markup, context);
       
       if (!engineRef.current) {
-        engineRef.current = new FrameworkEngine(canvas, root, '#006A6A', true);
+        engineRef.current = new FrameworkEngine(canvas, root, '#4285F4', true);
       } else {
         engineRef.current.updateRoot(root);
       }

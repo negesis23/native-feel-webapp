@@ -6,18 +6,53 @@ export class TextField extends UIComponent {
   value: string = '';
   placeholder: string = '';
   onChange?: (val: string) => void;
+  onSubmit?: (val: string) => void;
+  multiline: boolean = false;
   isTextInput = true;
   
   cursorTimer: number = 0;
   showCursor: boolean = true;
   cursorIndex: number = 0;
-  charPositions: number[] = [];
+  charPositions: {x: number, y: number}[] = [];
+  reportedValues: Set<string> = new Set();
   
   showTooltip: boolean = false;
   private pressTimer: any;
   private draggingHandle: 'start' | 'end' | null = null;
   
   private scrollX: number = 0;
+  private scrollY: number = 0;
+  private consumedClick: boolean = false;
+
+  hitTest(x: number, y: number): UIComponent | null {
+    // Check tooltip bounds first if visible
+    if (this.showTooltip) {
+      const cursorPos = this.charPositions[this.cursorIndex] || {x: this.x + 16, y: this.y + (this.multiline ? 24 : this.height / 2)};
+      const visualCursorX = cursorPos.x - this.scrollX;
+      const ttWidth = 220;
+      const ttX = Math.max(this.x, Math.min(this.x + this.width - ttWidth, visualCursorX - ttWidth / 2));
+      const ttY = this.y - 50;
+      if (x >= ttX && x <= ttX + ttWidth && y >= ttY && y <= ttY + 40) {
+        return this;
+      }
+    }
+    
+    // Check handles
+    if (this.isFocused) {
+      const handleRadius = 10;
+      const cursorHeight = 20;
+      // We just expand the hit area slightly downwards to catch handles
+      if (x >= this.x && x <= this.x + this.width && y >= this.y && y <= this.y + this.height + handleRadius * 2 + cursorHeight) {
+        return this;
+      }
+    }
+
+    // Default bounds
+    if (x >= this.x && x <= this.x + this.width && y >= this.y && y <= this.y + this.height) {
+      return this;
+    }
+    return null;
+  }
 
   constructor() {
     super();
@@ -37,42 +72,76 @@ export class TextField extends UIComponent {
 
       // Check if clicking on handles
       if (selectionStart !== selectionEnd) {
-        const startX = this.charPositions[Math.min(selectionStart, selectionEnd)] - this.scrollX;
-        const endX = this.charPositions[Math.max(selectionStart, selectionEnd)] - this.scrollX;
+        const startPos = this.charPositions[Math.min(selectionStart, selectionEnd)];
+        const startX = startPos.x - this.scrollX;
+        const startY = startPos.y - 10 - this.scrollY;
+        const startTipY = startY + cursorHeight;
         
-        if (Math.hypot(x - startX, y - (tipY + handleRadius)) < handleRadius * 2) {
+        const endPos = this.charPositions[Math.max(selectionStart, selectionEnd)];
+        const endX = endPos.x - this.scrollX;
+        const endY = endPos.y - 10 - this.scrollY;
+        const endTipY = endY + cursorHeight;
+        
+        if (Math.hypot(x - startX, y - (startTipY + handleRadius)) < handleRadius * 2) {
           this.draggingHandle = 'start';
+          this.consumedClick = true;
           return;
         }
-        if (Math.hypot(x - endX, y - (tipY + handleRadius)) < handleRadius * 2) {
+        if (Math.hypot(x - endX, y - (endTipY + handleRadius)) < handleRadius * 2) {
           this.draggingHandle = 'end';
+          this.consumedClick = true;
           return;
         }
       } else if (this.isFocused) {
-        const visualCursorX = (this.charPositions[this.cursorIndex] || this.x + 16) - this.scrollX;
+        const cursorPos = this.charPositions[this.cursorIndex] || {x: this.x + 16, y: this.y + (this.multiline ? 24 : this.height / 2)};
+        const visualCursorX = cursorPos.x - this.scrollX;
+        const cursorY = cursorPos.y - 10 - this.scrollY;
+        const tipY = cursorY + cursorHeight;
+        
         if (Math.hypot(x - visualCursorX, y - (tipY + handleRadius)) < handleRadius * 2) {
           this.draggingHandle = 'end';
+          this.consumedClick = true;
           return;
         }
       }
 
       // Check Tooltip click
       if (this.showTooltip) {
-        const visualCursorX = (this.charPositions[this.cursorIndex] || this.x + 16) - this.scrollX;
-        const ttX = Math.max(this.x, Math.min(this.x + this.width - 150, visualCursorX - 75));
+        const cursorPos = this.charPositions[this.cursorIndex] || {x: this.x + 16, y: this.y + (this.multiline ? 24 : this.height / 2)};
+        const visualCursorX = cursorPos.x - this.scrollX;
+        const ttWidth = 220;
+        const ttX = Math.max(this.x, Math.min(this.x + this.width - ttWidth, visualCursorX - ttWidth / 2));
         const ttY = this.y - 50;
-        if (x >= ttX && x <= ttX + 150 && y >= ttY && y <= ttY + 40) {
+        if (x >= ttX && x <= ttX + ttWidth && y >= ttY && y <= ttY + 40) {
+          this.consumedClick = true;
           const actionX = x - ttX;
           if (actionX < 50) { // Cut
-            navigator.clipboard.writeText(this.value);
-            this.value = '';
-            this.cursorIndex = 0;
+            if (selectionStart !== selectionEnd) {
+              const start = Math.min(selectionStart, selectionEnd);
+              const end = Math.max(selectionStart, selectionEnd);
+              const selectedText = this.value.substring(start, end);
+              navigator.clipboard.writeText(selectedText);
+              this.value = this.value.slice(0, start) + this.value.slice(end);
+              this.cursorIndex = start;
+              if (this.onChange) this.onChange(this.value);
+              if (engine) {
+                (engine as any).textInput.value = this.value;
+                (engine as any).textInput.setSelectionRange(start, start);
+              }
+            }
           } else if (actionX < 100) { // Copy
-            navigator.clipboard.writeText(this.value);
-          } else { // Paste
+            if (selectionStart !== selectionEnd) {
+              const start = Math.min(selectionStart, selectionEnd);
+              const end = Math.max(selectionStart, selectionEnd);
+              const selectedText = this.value.substring(start, end);
+              navigator.clipboard.writeText(selectedText);
+            }
+          } else if (actionX < 150) { // Paste
             navigator.clipboard.readText().then(text => {
-              this.value = this.value.slice(0, this.cursorIndex) + text + this.value.slice(this.cursorIndex);
-              this.cursorIndex += text.length;
+              const start = Math.min(selectionStart, selectionEnd);
+              const end = Math.max(selectionStart, selectionEnd);
+              this.value = this.value.slice(0, start) + text + this.value.slice(end);
+              this.cursorIndex = start + text.length;
               if (this.onChange) this.onChange(this.value);
               if (engine) {
                 (engine as any).textInput.value = this.value;
@@ -80,6 +149,11 @@ export class TextField extends UIComponent {
                 engine.requestRender();
               }
             });
+          } else { // Select All
+            if (engine) {
+              (engine as any).textInput.setSelectionRange(0, this.value.length);
+              this.cursorIndex = this.value.length;
+            }
           }
           this.showTooltip = false;
           if (engine) engine.requestRender();
@@ -89,10 +163,67 @@ export class TextField extends UIComponent {
       
       this.showTooltip = false;
 
-      // Long press for tooltip
+      if (!this.isFocused) {
+        this.isFocused = true;
+        if (engine) engine.requestRender();
+      }
+
+      // Long press for tooltip and smart selection
       clearTimeout(this.pressTimer);
       this.pressTimer = setTimeout(() => {
+        this.consumedClick = true;
         this.showTooltip = true;
+        
+        // Find closest character for cursor
+        if (this.charPositions.length > 0) {
+          let closestDist = Infinity;
+          let closestIdx = 0;
+          for(let i=0; i<this.charPositions.length; i++) {
+            const pos = this.charPositions[i];
+            const dist = Math.hypot(x + this.scrollX - pos.x, y + this.scrollY - pos.y);
+            if (dist < closestDist) {
+              closestDist = dist;
+              closestIdx = i;
+            }
+          }
+          
+          // Smart selection: select the word around closestIdx
+          const text = this.value;
+          let start = closestIdx;
+          let end = closestIdx;
+          
+          // Expand left
+          while (start > 0 && /\w/.test(text[start - 1])) {
+            start--;
+          }
+          // Expand right
+          while (end < text.length && /\w/.test(text[end])) {
+            end++;
+          }
+          
+          if (start !== end) {
+            this.cursorIndex = end;
+            if (engine) {
+              (engine as any).textInput.style.display = 'block';
+              if ((engine as any).textInput.value !== this.value) {
+                (engine as any).textInput.value = this.value || '';
+              }
+              (engine as any).textInput.focus();
+              (engine as any).textInput.setSelectionRange(start, end);
+            }
+          } else {
+            this.cursorIndex = closestIdx;
+            if (engine) {
+              (engine as any).textInput.style.display = 'block';
+              if ((engine as any).textInput.value !== this.value) {
+                (engine as any).textInput.value = this.value || '';
+              }
+              (engine as any).textInput.focus();
+              (engine as any).textInput.setSelectionRange(closestIdx, closestIdx);
+            }
+          }
+        }
+        
         if (engine) engine.requestRender();
       }, 500);
     };
@@ -102,7 +233,8 @@ export class TextField extends UIComponent {
         let closestDist = Infinity;
         let closestIdx = 0;
         for(let i=0; i<this.charPositions.length; i++) {
-          const dist = Math.abs(x + this.scrollX - this.charPositions[i]);
+          const pos = this.charPositions[i];
+          const dist = Math.hypot(x + this.scrollX - pos.x, y + this.scrollY - pos.y);
           if (dist < closestDist) {
             closestDist = dist;
             closestIdx = i;
@@ -148,6 +280,10 @@ export class TextField extends UIComponent {
     };
     
     this.onClick = (x, y, engine) => {
+      if (this.consumedClick) {
+        this.consumedClick = false;
+        return;
+      }
       this.isFocused = true;
       
       // Find closest character for cursor
@@ -155,7 +291,8 @@ export class TextField extends UIComponent {
         let closestDist = Infinity;
         let closestIdx = 0;
         for(let i=0; i<this.charPositions.length; i++) {
-          const dist = Math.abs(x + this.scrollX - this.charPositions[i]);
+          const pos = this.charPositions[i];
+          const dist = Math.hypot(x + this.scrollX - pos.x, y + this.scrollY - pos.y);
           if (dist < closestDist) {
             closestDist = dist;
             closestIdx = i;
@@ -165,9 +302,6 @@ export class TextField extends UIComponent {
       }
 
       if (engine) {
-        (engine as any).textInput.style.display = 'block';
-        (engine as any).textInput.value = this.value || '';
-        (engine as any).textInput.focus();
         setTimeout(() => {
           (engine as any).textInput.setSelectionRange(this.cursorIndex, this.cursorIndex);
         }, 10);
@@ -177,7 +311,7 @@ export class TextField extends UIComponent {
   }
 
   measure(ctx: CanvasRenderingContext2D, constraints: BoxConstraints) {
-    return { width: constraints.maxWidth, height: 56 };
+    return { width: constraints.maxWidth, height: this.multiline ? 120 : 56 };
   }
 
   render(ctx: CanvasRenderingContext2D, theme: Theme, dt: number, engine: FrameworkEngine) {
@@ -192,29 +326,23 @@ export class TextField extends UIComponent {
     ctx.font = '400 16px "Google Sans Flex", sans-serif';
     ctx.textBaseline = 'middle';
     
-    this.charPositions = [this.x + 16];
     let currentX = this.x + 16;
+    let currentY = this.y + (this.multiline ? 24 : this.height / 2);
+    const lineHeight = 24;
+    
+    this.charPositions = [{x: currentX, y: currentY}];
     
     // Calculate char positions without rendering yet
     for(let i=0; i<this.value.length; i++) {
       const char = this.value[i];
-      currentX += ctx.measureText(char).width;
-      this.charPositions.push(currentX);
+      if (char === '\n') {
+        currentX = this.x + 16;
+        currentY += lineHeight;
+      } else {
+        currentX += ctx.measureText(char).width;
+      }
+      this.charPositions.push({x: currentX, y: currentY});
     }
-
-    // Adjust scrollX to keep cursor visible
-    const cursorX = this.charPositions[this.cursorIndex] || this.x + 16;
-    const padding = 16;
-    if (cursorX - this.scrollX > this.x + this.width - padding) {
-      this.scrollX = cursorX - (this.x + this.width - padding);
-    } else if (cursorX - this.scrollX < this.x + padding) {
-      this.scrollX = Math.max(0, cursorX - (this.x + padding));
-    }
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(this.x, this.y, this.width, this.height);
-    ctx.clip();
 
     // Draw selection highlight
     let selectionStart = this.cursorIndex;
@@ -223,24 +351,74 @@ export class TextField extends UIComponent {
       selectionStart = (engine as any).textInput.selectionStart ?? this.cursorIndex;
       selectionEnd = (engine as any).textInput.selectionEnd ?? this.cursorIndex;
     }
+    
+    // Clamp to prevent out of bounds if value is out of sync momentarily
+    const maxIdx = this.charPositions.length - 1;
+    selectionStart = Math.min(Math.max(0, selectionStart), maxIdx);
+    selectionEnd = Math.min(Math.max(0, selectionEnd), maxIdx);
+    this.cursorIndex = Math.min(Math.max(0, this.cursorIndex), maxIdx);
+
+    // Adjust scrollX and scrollY to keep cursor visible
+    const cursorPos = this.charPositions[this.cursorIndex];
+    const padding = 16;
+    if (cursorPos.x - this.scrollX > this.x + this.width - padding) {
+      this.scrollX = cursorPos.x - (this.x + this.width - padding);
+    } else if (cursorPos.x - this.scrollX < this.x + padding) {
+      this.scrollX = Math.max(0, cursorPos.x - (this.x + padding));
+    }
+    
+    if (this.multiline) {
+      if (cursorPos.y - this.scrollY > this.y + this.height - padding) {
+        this.scrollY = cursorPos.y - (this.y + this.height - padding);
+      } else if (cursorPos.y - this.scrollY < this.y + padding) {
+        this.scrollY = Math.max(0, cursorPos.y - (this.y + padding));
+      }
+    }
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(this.x, this.y, this.width, this.height);
+    ctx.clip();
 
     if (selectionStart !== selectionEnd) {
-      const startX = this.charPositions[Math.min(selectionStart, selectionEnd)] - this.scrollX;
-      const endX = this.charPositions[Math.max(selectionStart, selectionEnd)] - this.scrollX;
       ctx.fillStyle = theme.primaryContainer || 'rgba(103, 80, 164, 0.3)';
-      ctx.fillRect(startX, this.y + 8, endX - startX, this.height - 16);
+      let startIdx = Math.min(selectionStart, selectionEnd);
+      let endIdx = Math.max(selectionStart, selectionEnd);
+      
+      let currentLineY = this.charPositions[startIdx].y;
+      let lineStartX = this.charPositions[startIdx].x;
+      
+      for (let i = startIdx; i <= endIdx; i++) {
+        const pos = this.charPositions[i];
+        if (pos.y !== currentLineY || i === endIdx) {
+          // Draw previous line
+          const lineEndX = i === endIdx ? pos.x : this.x + this.width - 16;
+          ctx.fillRect(lineStartX - this.scrollX, currentLineY - 12 - this.scrollY, lineEndX - lineStartX, lineHeight);
+          
+          if (i !== endIdx) {
+            currentLineY = pos.y;
+            lineStartX = this.x + 16;
+          }
+        }
+      }
     }
 
     if (this.value.length === 0) {
       ctx.fillStyle = theme.onSurfaceVariant;
-      ctx.fillText(this.placeholder, this.x + 16 - this.scrollX, this.y + this.height / 2);
+      ctx.fillText(this.placeholder, this.x + 16 - this.scrollX, this.y + (this.multiline ? 24 : this.height / 2) - this.scrollY);
     } else {
       ctx.fillStyle = theme.onSurface;
       currentX = this.x + 16;
+      currentY = this.y + (this.multiline ? 24 : this.height / 2);
       for(let i=0; i<this.value.length; i++) {
         const char = this.value[i];
-        ctx.fillText(char, currentX - this.scrollX, this.y + this.height / 2);
-        currentX += ctx.measureText(char).width;
+        if (char === '\n') {
+          currentX = this.x + 16;
+          currentY += lineHeight;
+        } else {
+          ctx.fillText(char, currentX - this.scrollX, currentY - this.scrollY);
+          currentX += ctx.measureText(char).width;
+        }
       }
     }
 
@@ -253,11 +431,11 @@ export class TextField extends UIComponent {
         this.cursorTimer = 0;
       }
 
-      const visualCursorX = cursorX - this.scrollX;
-      const cursorY = this.y + this.height / 2 - 10;
+      const visualCursorX = cursorPos.x - this.scrollX;
+      const cursorY = cursorPos.y - 10 - this.scrollY;
       const cursorHeight = 20;
       
-      if (visualCursorX >= this.x && visualCursorX <= this.x + this.width) {
+      if (visualCursorX >= this.x && visualCursorX <= this.x + this.width && cursorY >= this.y && cursorY <= this.y + this.height) {
         if (this.showCursor && selectionStart === selectionEnd) {
           ctx.fillStyle = theme.primary;
           ctx.fillRect(visualCursorX - 1, cursorY, 2, cursorHeight);
@@ -267,42 +445,52 @@ export class TextField extends UIComponent {
       // Teardrop handles
       ctx.fillStyle = theme.primary;
       const handleRadius = 10;
-      const tipY = cursorY + cursorHeight;
       
       if (selectionStart !== selectionEnd) {
-        // Draw start handle
-        const startX = this.charPositions[Math.min(selectionStart, selectionEnd)] - this.scrollX;
-        if (startX >= this.x && startX <= this.x + this.width) {
+        // Draw start handle (points top-right)
+        const startPos = this.charPositions[Math.min(selectionStart, selectionEnd)];
+        const startX = startPos.x - this.scrollX;
+        const startY = startPos.y - 10 - this.scrollY;
+        const startTipY = startY + cursorHeight;
+        
+        if (startX >= this.x && startX <= this.x + this.width && startY >= this.y && startY <= this.y + this.height) {
           ctx.beginPath();
-          ctx.arc(startX, tipY + handleRadius, handleRadius, 0, Math.PI);
-          ctx.lineTo(startX, tipY);
-          ctx.closePath();
+          ctx.arc(startX - handleRadius, startTipY + handleRadius, handleRadius, 0, Math.PI * 2);
           ctx.fill();
+          ctx.fillRect(startX - handleRadius, startTipY, handleRadius, handleRadius);
         }
         
-        // Draw end handle
-        const endX = this.charPositions[Math.max(selectionStart, selectionEnd)] - this.scrollX;
-        if (endX >= this.x && endX <= this.x + this.width) {
+        // Draw end handle (points top-left)
+        const endPos = this.charPositions[Math.max(selectionStart, selectionEnd)];
+        const endX = endPos.x - this.scrollX;
+        const endY = endPos.y - 10 - this.scrollY;
+        const endTipY = endY + cursorHeight;
+        
+        if (endX >= this.x && endX <= this.x + this.width && endY >= this.y && endY <= this.y + this.height) {
           ctx.beginPath();
-          ctx.arc(endX, tipY + handleRadius, handleRadius, 0, Math.PI);
-          ctx.lineTo(endX, tipY);
-          ctx.closePath();
+          ctx.arc(endX + handleRadius, endTipY + handleRadius, handleRadius, 0, Math.PI * 2);
           ctx.fill();
+          ctx.fillRect(endX, endTipY, handleRadius, handleRadius);
         }
       } else {
-        // Single handle
-        if (visualCursorX >= this.x && visualCursorX <= this.x + this.width) {
+        // Single handle (points top-center)
+        const tipY = cursorY + cursorHeight;
+        if (visualCursorX >= this.x && visualCursorX <= this.x + this.width && cursorY >= this.y && cursorY <= this.y + this.height) {
           ctx.beginPath();
-          ctx.arc(visualCursorX, tipY + handleRadius, handleRadius, 0, Math.PI);
-          ctx.lineTo(visualCursorX, tipY);
-          ctx.closePath();
+          ctx.arc(visualCursorX, tipY + handleRadius * 1.5, handleRadius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(visualCursorX, tipY);
+          ctx.lineTo(visualCursorX - handleRadius, tipY + handleRadius * 1.5);
+          ctx.lineTo(visualCursorX + handleRadius, tipY + handleRadius * 1.5);
           ctx.fill();
         }
       }
 
       // Tooltip
       if (this.showTooltip) {
-        const ttX = Math.max(this.x, Math.min(this.x + this.width - 150, visualCursorX - 75));
+        const ttWidth = 220;
+        const ttX = Math.max(this.x, Math.min(this.x + this.width - ttWidth, visualCursorX - ttWidth / 2));
         const ttY = this.y - 50;
         
         ctx.shadowColor = 'rgba(0,0,0,0.2)';
@@ -311,7 +499,7 @@ export class TextField extends UIComponent {
         
         ctx.fillStyle = theme.surfaceVariant;
         ctx.beginPath();
-        ctx.roundRect(ttX, ttY, 150, 40, 8);
+        ctx.roundRect(ttX, ttY, ttWidth, 40, 8);
         ctx.fill();
         
         ctx.shadowColor = 'transparent';
@@ -322,11 +510,13 @@ export class TextField extends UIComponent {
         ctx.fillText('Cut', ttX + 25, ttY + 20);
         ctx.fillText('Copy', ttX + 75, ttY + 20);
         ctx.fillText('Paste', ttX + 125, ttY + 20);
+        ctx.fillText('Select All', ttX + 185, ttY + 20);
         ctx.textAlign = 'left';
         
         ctx.fillStyle = theme.onSurfaceVariant;
         ctx.fillRect(ttX + 50, ttY + 10, 1, 20);
         ctx.fillRect(ttX + 100, ttY + 10, 1, 20);
+        ctx.fillRect(ttX + 150, ttY + 10, 1, 20);
       }
 
       engine.requestRender();

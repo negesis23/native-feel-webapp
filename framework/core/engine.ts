@@ -11,7 +11,7 @@ export class FrameworkEngine {
   
   private isDirty = true;
   private lastTime = performance.now();
-  private textInput: HTMLInputElement;
+  private textInput: HTMLTextAreaElement;
 
   private isDestroyed = false;
   scrollYOffset: number = 0;
@@ -26,8 +26,7 @@ export class FrameworkEngine {
     this.root = root;
     this.theme = generateTheme(seedColor, isDark);
     
-    this.textInput = document.createElement('input');
-    this.textInput.type = 'text';
+    this.textInput = document.createElement('textarea');
     this.textInput.style.position = 'fixed';
     this.textInput.style.opacity = '0';
     this.textInput.style.pointerEvents = 'none';
@@ -61,10 +60,22 @@ export class FrameworkEngine {
       });
     }
 
+    this.textInput.addEventListener('keydown', (e) => {
+      if (this.focusedComponent && (this.focusedComponent as any).isTextInput) {
+        const tf = this.focusedComponent as any;
+        if (e.key === 'Enter' && !tf.multiline) {
+          e.preventDefault();
+          if (tf.onSubmit) tf.onSubmit(tf.value);
+          this.textInput.blur();
+        }
+      }
+    });
+
     this.textInput.addEventListener('input', (e) => {
       if (this.focusedComponent && (this.focusedComponent as any).isTextInput) {
         const tf = this.focusedComponent as any;
         tf.value = this.textInput.value;
+        tf.reportedValues.add(this.textInput.value);
         tf.cursorIndex = this.textInput.selectionStart ?? tf.value.length;
         if (tf.onChange) {
           tf.onChange(tf.value);
@@ -133,6 +144,35 @@ export class FrameworkEngine {
           (node as any).scrollY = (oldNode as any).scrollY;
           (node as any).velocityY = (oldNode as any).velocityY;
         }
+
+        if ((node as any).isTextInput && (oldNode as any).isTextInput) {
+          (node as any).cursorIndex = (oldNode as any).cursorIndex;
+          (node as any).selectionStart = (oldNode as any).selectionStart;
+          (node as any).selectionEnd = (oldNode as any).selectionEnd;
+          (node as any).showTooltip = (oldNode as any).showTooltip;
+          (node as any).scrollX = (oldNode as any).scrollX;
+          (node as any).scrollY = (oldNode as any).scrollY;
+          (node as any).reportedValues = (oldNode as any).reportedValues;
+          
+          if ((node as any).propValue === (oldNode as any).propValue) {
+            // Prop didn't change programmatically, preserve user's typed value
+            (node as any).value = (oldNode as any).value;
+          } else if ((node as any).reportedValues.has((node as any).propValue)) {
+            // Prop changed, but it's a stale echo of a value we recently reported!
+            // Ignore it and preserve user's typed value
+            (node as any).value = (oldNode as any).value;
+            // We can optionally remove older values from the set to prevent memory leaks
+            // but it's probably fine for short sessions.
+          } else {
+            // Prop changed programmatically to a NEW value!
+            // Update hidden input if focused
+            (node as any).reportedValues.clear();
+            if (this.focusedComponent === oldNode || this.focusedComponent === node) {
+              this.textInput.value = (node as any).value;
+              this.textInput.setSelectionRange((node as any).cursorIndex, (node as any).cursorIndex);
+            }
+          }
+        }
         
         if (node.isFocused) this.focusedComponent = node;
         if (node.isPressed) this.pressedComponent = node;
@@ -150,6 +190,20 @@ export class FrameworkEngine {
   }
 
   private setupEvents() {
+    this.canvas.addEventListener('touchend', (e) => {
+      if (this.focusedComponent && (this.focusedComponent as any).isTextInput) {
+        e.preventDefault();
+        this.textInput.focus();
+      }
+    });
+
+    this.canvas.addEventListener('mouseup', (e) => {
+      if (this.focusedComponent && (this.focusedComponent as any).isTextInput) {
+        e.preventDefault();
+        this.textInput.focus();
+      }
+    });
+
     this.canvas.addEventListener('pointerdown', (e) => {
       const rect = this.canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
@@ -171,6 +225,18 @@ export class FrameworkEngine {
       if (hit) {
         hit.isPressed = true;
         this.pressedComponent = hit;
+        
+        // Focus text input immediately on touch start for reliable mobile keyboard
+        if ((hit as any).isTextInput) {
+          e.preventDefault();
+          this.focusedComponent = hit;
+          hit.isFocused = true;
+          this.textInput.style.display = 'block';
+          if (this.textInput.value !== (hit as any).value) {
+            this.textInput.value = (hit as any).value || '';
+          }
+          this.textInput.focus();
+        }
         
         let node: UIComponent | undefined = hit;
         while (node) {
@@ -201,12 +267,15 @@ export class FrameworkEngine {
           node = node.parent;
         }
         
-        // Only trigger click if released on the same component and no drag occurred
-        if (hit === this.pressedComponent && !this.hasDragged) {
-          this.focusedComponent = hit;
-          hit.isFocused = true;
+        // Only trigger click if released inside the pressed component and no drag occurred
+        const isInside = x >= this.pressedComponent.x && x <= this.pressedComponent.x + this.pressedComponent.width &&
+                         y >= this.pressedComponent.y && y <= this.pressedComponent.y + this.pressedComponent.height;
+                         
+        if (isInside && !this.hasDragged) {
+          this.focusedComponent = this.pressedComponent;
+          this.pressedComponent.isFocused = true;
           
-          hit.handleClick(x, y, this);
+          this.pressedComponent.handleClick(x, y, this);
         }
         this.pressedComponent = null;
       }
@@ -219,7 +288,7 @@ export class FrameworkEngine {
       const y = e.clientY - rect.top - this.scrollYOffset;
       
       if (this.pressedComponent) {
-        if (Math.abs(x - this.pointerDownX) > 15 || Math.abs(y - this.pointerDownY) > 15) {
+        if (Math.abs(x - this.pointerDownX) > 25 || Math.abs(y - this.pointerDownY) > 25) {
           this.hasDragged = true;
           this.pressedComponent.isPressed = false; // Cancel visual press state
         }
