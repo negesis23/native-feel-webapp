@@ -199,8 +199,16 @@ export class FrameworkEngine {
 
   handleResize() {
     const dpr = window.devicePixelRatio || 1;
-    const width = window.innerWidth;
-    const height = window.innerHeight;
+    // Gunakan getBoundingClientRect untuk mendapatkan ukuran asli elemen di DOM
+    // Jangan gunakan window.innerWidth/Height karena bisa tidak sinkron dengan CSS saat toolbar browser muncul
+    const rect = this.canvas.parentElement?.getBoundingClientRect() || this.canvas.getBoundingClientRect();
+    
+    // Pastikan ukuran CSS Canvas mengisi penuh container
+    this.canvas.style.width = '100%';
+    this.canvas.style.height = '100%';
+
+    const width = rect.width;
+    const height = rect.height;
     
     this.canvas.width = width * dpr;
     this.canvas.height = height * dpr;
@@ -224,6 +232,18 @@ export class FrameworkEngine {
   }
 
   private setupEvents() {
+    const getPointerCoords = (e: MouseEvent | PointerEvent) => {
+      const rect = this.canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      // Normalisasi koordinat: jika CSS meleset dari buffer internal, ini akan menyesuaikan kembali
+      const scaleX = this.canvas.width / rect.width / dpr;
+      const scaleY = this.canvas.height / rect.height / dpr;
+      return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+      };
+    };
+
     this.canvas.addEventListener('touchend', (e) => {
       if (this.focusedComponent && (this.focusedComponent as any).isTextInput) {
         e.preventDefault();
@@ -239,9 +259,7 @@ export class FrameworkEngine {
     });
 
     this.canvas.addEventListener('pointerdown', (e) => {
-      const rect = this.canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const { x, y } = getPointerCoords(e);
       
       this.pointerDownX = x;
       this.pointerDownY = y;
@@ -291,9 +309,7 @@ export class FrameworkEngine {
     });
 
     this.canvas.addEventListener('pointerup', (e) => {
-      const rect = this.canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const { x, y } = getPointerCoords(e);
       
       const hit = this.root.hitTest(x, y);
       
@@ -322,9 +338,7 @@ export class FrameworkEngine {
     });
 
     this.canvas.addEventListener('pointermove', (e) => {
-      const rect = this.canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const { x, y } = getPointerCoords(e);
       
       if (this.pressedComponent) {
         if (Math.abs(x - this.pointerDownX) > 25 || Math.abs(y - this.pointerDownY) > 25) {

@@ -6,3 +6,5 @@ coverage/
 .env*
 !.env.example
 *ssh*
+dist
+build
