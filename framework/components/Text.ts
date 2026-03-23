@@ -1,6 +1,6 @@
 import { UIComponent, BoxConstraints } from '../core/component';
-import { Theme } from '../core/theme';
-import { FrameworkEngine } from '../core/engine';
+import { Theme } from './theme';
+import { FrameworkEngine } from './engine';
 
 export class Text extends UIComponent {
   text: string = '';
@@ -12,11 +12,11 @@ export class Text extends UIComponent {
 
   private getFont() {
     switch (this.variant) {
-      case 'display': return '400 36px "Google Sans Flex", sans-serif';
-      case 'headline': return '400 24px "Google Sans Flex", sans-serif';
-      case 'title': return '500 16px "Google Sans Flex", sans-serif';
-      case 'label': return '500 14px "Google Sans Flex", sans-serif';
-      case 'body': default: return '400 14px "Google Sans Flex", sans-serif';
+      case 'display': return '400 36px "Google Sans", sans-serif';
+      case 'headline': return '400 24px "Google Sans", sans-serif';
+      case 'title': return '500 16px "Google Sans", sans-serif';
+      case 'label': return '500 14px "Google Sans", sans-serif';
+      case 'body': default: return '400 14px "Google Sans", sans-serif';
     }
   }
 

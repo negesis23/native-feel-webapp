@@ -1,6 +1,6 @@
 import { UIComponent, BoxConstraints } from '../core/component';
-import { Theme } from '../core/theme';
-import { FrameworkEngine } from '../core/engine';
+import { Theme } from './theme';
+import { FrameworkEngine } from './engine';
 
 export type ButtonVariant = 'filled' | 'outlined' | 'tonal' | 'text';
 
@@ -27,7 +27,7 @@ export class Button extends UIComponent {
   }
 
   measure(ctx: CanvasRenderingContext2D, constraints: BoxConstraints) {
-    ctx.font = '500 14px "Google Sans Flex", sans-serif';
+    ctx.font = '500 14px "Google Sans", sans-serif';
     const metrics = ctx.measureText(this.text);
     const iconWidth = this.icon ? 24 + 8 : 0; // icon size + gap
     return { width: Math.max(64, metrics.width + iconWidth + 48), height: 40 };
@@ -107,7 +107,7 @@ export class Button extends UIComponent {
     
     let startX = this.x + this.width / 2;
     if (this.icon) {
-      ctx.font = '500 14px "Google Sans Flex", sans-serif';
+      ctx.font = '500 14px "Google Sans", sans-serif';
       const textWidth = ctx.measureText(this.text).width;
       const totalWidth = 18 + 8 + textWidth;
       startX = this.x + (this.width - totalWidth) / 2;
@@ -120,7 +120,7 @@ export class Button extends UIComponent {
       startX += 18 + 8;
     }
 
-    ctx.font = '500 14px "Google Sans Flex", sans-serif';
+    ctx.font = '500 14px "Google Sans", sans-serif';
     ctx.textAlign = this.icon ? 'left' : 'center';
     const textMetrics = ctx.measureText(this.text);
     const textYOffset = (textMetrics.actualBoundingBoxAscent - textMetrics.actualBoundingBoxDescent) / 2;

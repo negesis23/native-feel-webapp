@@ -1,6 +1,6 @@
 import { UIComponent, BoxConstraints } from '../core/component';
-import { Theme } from '../core/theme';
-import { FrameworkEngine } from '../core/engine';
+import { Theme } from './theme';
+import { FrameworkEngine } from './engine';
 
 export class TextField extends UIComponent {
   value: string = '';
@@ -326,7 +326,7 @@ export class TextField extends UIComponent {
     ctx.fillStyle = this.isFocused ? theme.primary : theme.onSurfaceVariant;
     ctx.fillRect(this.x, this.y + this.height - (this.isFocused ? 2 : 1), this.width, this.isFocused ? 2 : 1);
 
-    ctx.font = '400 16px "Google Sans Flex", sans-serif';
+    ctx.font = '400 16px "Google Sans", sans-serif';
     ctx.textBaseline = 'middle';
     
     let currentX = this.x + 16;
@@ -508,7 +508,7 @@ export class TextField extends UIComponent {
         ctx.shadowColor = 'transparent';
         
         ctx.fillStyle = theme.onSurface;
-        ctx.font = '500 14px "Google Sans Flex", sans-serif';
+        ctx.font = '500 14px "Google Sans", sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('Cut', ttX + 25, ttY + 20);
         ctx.fillText('Copy', ttX + 75, ttY + 20);

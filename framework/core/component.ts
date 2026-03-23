@@ -39,12 +39,25 @@ export abstract class UIComponent {
   needsScrollIntoView: boolean = false;
   
   ripples: Ripple[] = [];
+  cleanups: Array<() => void> = [];
 
   onClick?: (x: number, y: number, engine?: FrameworkEngine) => void;
   onPointerDown?: (x: number, y: number, engine?: FrameworkEngine) => void;
   onPointerUp?: (x: number, y: number, engine?: FrameworkEngine) => void;
   onPointerMove?: (x: number, y: number, engine?: FrameworkEngine) => void;
   onKeyDown?: (e: KeyboardEvent) => void;
+  onDestroy?: () => void;
+
+  destroy() {
+    for (const cleanup of this.cleanups) {
+      cleanup();
+    }
+    this.cleanups = [];
+    for (const child of this.children) {
+      child.destroy();
+    }
+    if (this.onDestroy) this.onDestroy();
+  }
 
   handleClick(x: number, y: number, engine?: FrameworkEngine) {
     if (this.onClick) this.onClick(x, y, engine);

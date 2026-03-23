@@ -1,5 +1,7 @@
+import { CompiledTemplate } from './compiler';
+
 export class MemoryRouter {
-  private routes: Record<string, () => string> = {};
+  private routes: Record<string, () => string | CompiledTemplate> = {};
   private currentPath: string = '/';
   private listeners: (() => void)[] = [];
 
@@ -7,7 +9,7 @@ export class MemoryRouter {
     this.currentPath = initialPath;
   }
 
-  addRoute(path: string, templateBuilder: () => string) {
+  addRoute(path: string, templateBuilder: () => string | CompiledTemplate) {
     this.routes[path] = templateBuilder;
   }
 
@@ -20,9 +22,9 @@ export class MemoryRouter {
     }
   }
 
-  getCurrentTemplate(): string {
+  getCurrentTemplate(): string | CompiledTemplate {
     const builder = this.routes[this.currentPath];
-    return builder ? builder() : '<Column padding="24"><Text text="404 Not Found" variant="headline" /></Column>';
+    return builder ? builder() : '<column padding="24"><text text="404 Not Found" variant="headline" /></column>';
   }
 
   subscribe(listener: () => void) {

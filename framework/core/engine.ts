@@ -21,6 +21,7 @@ export class FrameworkEngine {
   }
 
   private isDestroyed = false;
+  public lastError: Error | null = null;
   
   private pointerDownX: number = 0;
   private pointerDownY: number = 0;
@@ -31,6 +32,7 @@ export class FrameworkEngine {
     this.ctx = canvas.getContext('2d')!;
     this.root = root;
     this.theme = generateTheme(seedColor, isDark);
+    document.body.style.backgroundColor = this.theme.background;
     
     const setupInput = (input: HTMLElement) => {
       input.style.position = 'fixed';
@@ -94,6 +96,9 @@ export class FrameworkEngine {
 
     setupListeners(this.singleLineInput);
     setupListeners(this.multiLineInput);
+
+    window.addEventListener('resize', () => this.handleResize());
+    this.handleResize();
 
     document.addEventListener('selectionchange', () => {
       if ((document.activeElement === this.singleLineInput || document.activeElement === this.multiLineInput) && this.focusedComponent && (this.focusedComponent as any).isTextInput) {
@@ -183,12 +188,39 @@ export class FrameworkEngine {
     };
     applyIds(newRoot);
 
+    if (this.root) {
+      this.root.destroy();
+    }
+
     this.root = newRoot;
+    this.handleResize(); // Ensure new root fits current size
+    this.requestRender();
+  }
+
+  handleResize() {
+    const dpr = window.devicePixelRatio || 1;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    
+    this.canvas.width = width * dpr;
+    this.canvas.height = height * dpr;
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    
+    if (this.focusedComponent) {
+      this.focusedComponent.needsScrollIntoView = true;
+    }
+    
     this.requestRender();
   }
 
   requestRender() {
     this.isDirty = true;
+  }
+
+  setTheme(seedColor: string, isDark: boolean) {
+    this.theme = generateTheme(seedColor, isDark);
+    document.body.style.backgroundColor = this.theme.background;
+    this.requestRender();
   }
 
   private setupEvents() {
@@ -322,13 +354,73 @@ export class FrameworkEngine {
     const dt = (now - this.lastTime) / 1000;
     this.lastTime = now;
 
-    // Always render if dirty, or if any component requests animation frames
-    // For simplicity, we'll pass dt to render. Components can set engine.isDirty = true if they are animating.
-    if (this.isDirty) {
-      this.isDirty = false; // Components animating will set this back to true during render
-      this.render(dt);
+    try {
+      if (this.lastError) {
+        this.renderError(this.lastError);
+      } else if (this.isDirty) {
+        this.isDirty = false;
+        this.render(dt);
+      }
+    } catch (e) {
+      this.lastError = e as Error;
+      console.error("Framework Render Error:", e);
     }
     requestAnimationFrame(this.loop);
+  }
+
+  private renderError(err: Error) {
+    const ctx = this.ctx;
+    const canvas = this.canvas;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    
+    ctx.fillStyle = '#1A1C1E';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = '#FFB4AB';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.fillText('Framework Exception', 20, 40);
+    
+    // Tampilkan Pesan Error Utama (Bold)
+    ctx.font = 'bold 14px monospace';
+    ctx.fillStyle = '#FFB4AB';
+    const message = `Error: ${err.message}`;
+    let currentY = 75;
+    const maxWidth = canvas.width - 40;
+    const lineHeight = 18;
+
+    const wrapAndDraw = (text: string, isStack: boolean) => {
+      let currentLine = '';
+      for (const char of text) {
+        const testLine = currentLine + char;
+        if (ctx.measureText(testLine).width > maxWidth) {
+          ctx.fillText(currentLine, 20, currentY);
+          currentY += lineHeight;
+          currentLine = char;
+        } else {
+          currentLine = testLine;
+        }
+        if (currentY > canvas.height - 20) break;
+      }
+      ctx.fillText(currentLine, 20, currentY);
+      currentY += lineHeight;
+    };
+
+    wrapAndDraw(message, false);
+
+    // Tampilkan Stacktrace (Dimmed)
+    ctx.font = '12px monospace';
+    ctx.fillStyle = '#E2E2E6';
+    currentY += 10; // Spasi tambahan antara pesan dan stack
+
+    if (err.stack) {
+      const stackLines = err.stack.split('\n');
+      // Lewati baris pertama jika itu sama dengan pesan error
+      const startIdx = stackLines[0].includes(err.message) ? 1 : 0;
+      for (let i = startIdx; i < stackLines.length; i++) {
+        wrapAndDraw(stackLines[i].replace(/\t/g, '  '), true);
+        if (currentY > canvas.height - 20) break;
+      }
+    }
   }
 
   private ensureVisible(component: UIComponent): boolean {

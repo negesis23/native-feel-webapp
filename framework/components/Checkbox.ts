@@ -1,6 +1,6 @@
 import { UIComponent, BoxConstraints } from '../core/component';
-import { Theme } from '../core/theme';
-import { FrameworkEngine } from '../core/engine';
+import { Theme } from './theme';
+import { FrameworkEngine } from './engine';
 
 export class Checkbox extends UIComponent {
   checked: boolean = false;
