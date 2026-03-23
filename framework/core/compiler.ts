@@ -7,16 +7,16 @@ import { TextField } from '../components/TextField';
 import { Checkbox } from '../components/Checkbox';
 import { Icon } from '../components/Icon';
 import { Signal } from './reactivity';
-export function xml(strings) {
-    var values = [];
-    for (var _i = 1; _i < arguments.length; _i++) {
-        values[_i - 1] = arguments[_i];
-    }
+export function xml() {
     var markup = '';
-    for (var i = 0; i < strings.length; i++) {
-        markup += strings[i];
-        if (i < values.length) {
-            markup += "__VAL_".concat(i, "__");
+    var values = [];
+    for (var i = 0; i < arguments.length; i++) {
+        var arg = arguments[i];
+        if (typeof arg === 'string') {
+            markup += arg;
+        } else {
+            markup += '__VAL_' + values.length + '__';
+            values.push(arg);
         }
     }
     return { markup: markup, values: values };
