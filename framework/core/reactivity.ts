@@ -1,51 +1,48 @@
-let globalRenderRequest: (() => void) | null = null;
-
-export function setRenderRequest(fn: () => void) {
-  globalRenderRequest = fn;
+var globalRenderRequest = null;
+export function setRenderRequest(fn) {
+    globalRenderRequest = fn;
 }
-
 export function requestRender() {
-  if (globalRenderRequest) {
-    globalRenderRequest();
-  }
-}
-
-type Listener<T> = (newValue: T) => void;
-
-export class Signal<T> {
-  private _value: T;
-  private listeners: Set<Listener<T>> = new Set();
-
-  constructor(initialValue: T) {
-    this._value = initialValue;
-  }
-
-  get value(): T {
-    return this._value;
-  }
-
-  set value(newValue: T) {
-    if (this._value !== newValue) {
-      this._value = newValue;
-      this.notify();
-      requestRender(); // Automatically trigger re-repaint
+    if (globalRenderRequest) {
+        globalRenderRequest();
     }
-  }
-
-  subscribe(listener: Listener<T>) {
-    this.listeners.add(listener);
-    return () => {
-      this.listeners.delete(listener);
+}
+var Signal = /** @class */ (function () {
+    function Signal(initialValue) {
+        this.listeners = [];
+        this._value = initialValue;
+    }
+    Object.defineProperty(Signal.prototype, "value", {
+        get: function () {
+            return this._value;
+        },
+        set: function (newValue) {
+            if (this._value !== newValue) {
+                this._value = newValue;
+                this.notify();
+                requestRender(); // Automatically trigger re-repaint
+            }
+        },
+        enumerable: false,
+        configurable: true
+    });
+    Signal.prototype.subscribe = function (listener) {
+        this.listeners.push(listener);
+        return function () {
+            var idx = this.listeners.indexOf(listener);
+            if (idx !== -1)
+                this.listeners.splice(idx, 1);
+        }.bind(this);
     };
-  }
-
-  private notify() {
-    for (const listener of this.listeners) {
-      listener(this._value);
-    }
-  }
-}
-
-export function createSignal<T>(initialValue: T): Signal<T> {
-  return new Signal<T>(initialValue);
+    Signal.prototype.notify = function () {
+        for (var _i = 0, _a = this.listeners; _i < _a.length; _i++) {
+            var listener = _a[_i];
+            listener(this._value);
+        }
+    };
+    return Signal;
+}());
+export { Signal };
+export function createSignal(initialValue) {
+    return new Signal(initialValue);
 }

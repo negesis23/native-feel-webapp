@@ -4,8 +4,6 @@ export * from './core/router';
 export * from './core/app';
 export * from './core/component';
 export * from './core/reactivity';
-
-
 export * from './core/theme';
 export * from './components/Button';
 export * from './components/Checkbox';

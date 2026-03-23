@@ -8,3 +8,4 @@ coverage/
 *ssh*
 dist
 build
+*lock*

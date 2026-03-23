@@ -1,42 +1,39 @@
-import { CompiledTemplate } from './compiler';
-
-export class MemoryRouter {
-  private routes: Record<string, () => string | CompiledTemplate> = {};
-  private currentPath: string = '/';
-  private listeners: (() => void)[] = [];
-
-  constructor(initialPath: string = '/') {
-    this.currentPath = initialPath;
-  }
-
-  addRoute(path: string, templateBuilder: () => string | CompiledTemplate) {
-    this.routes[path] = templateBuilder;
-  }
-
-  navigate(path: string) {
-    if (this.routes[path]) {
-      this.currentPath = path;
-      this.notifyListeners();
-    } else {
-      console.warn(`Route not found: ${path}`);
+var MemoryRouter = /** @class */ (function () {
+    function MemoryRouter(initialPath) {
+        if (initialPath === void 0) { initialPath = '/'; }
+        this.routes = {};
+        this.currentPath = '/';
+        this.listeners = [];
+        this.currentPath = initialPath;
     }
-  }
-
-  getCurrentTemplate(): string | CompiledTemplate {
-    const builder = this.routes[this.currentPath];
-    return builder ? builder() : '<column padding="24"><text text="404 Not Found" variant="headline" /></column>';
-  }
-
-  subscribe(listener: () => void) {
-    this.listeners.push(listener);
-    return () => {
-      this.listeners = this.listeners.filter(l => l !== listener);
+    MemoryRouter.prototype.addRoute = function (path, templateBuilder) {
+        this.routes[path] = templateBuilder;
     };
-  }
-
-  private notifyListeners() {
-    for (const listener of this.listeners) {
-      listener();
-    }
-  }
-}
+    MemoryRouter.prototype.navigate = function (path) {
+        if (this.routes[path]) {
+            this.currentPath = path;
+            this.notifyListeners();
+        }
+        else {
+            console.warn("Route not found: ".concat(path));
+        }
+    };
+    MemoryRouter.prototype.getCurrentTemplate = function () {
+        var builder = this.routes[this.currentPath];
+        return builder ? builder() : '<column padding="24"><text text="404 Not Found" variant="headline" /></column>';
+    };
+    MemoryRouter.prototype.subscribe = function (listener) {
+        this.listeners.push(listener);
+        return function () {
+            this.listeners = this.listeners.filter(function (l) { return l !== listener; });
+        }.bind(this);
+    };
+    MemoryRouter.prototype.notifyListeners = function () {
+        for (var _i = 0, _a = this.listeners; _i < _a.length; _i++) {
+            var listener = _a[_i];
+            listener();
+        }
+    };
+    return MemoryRouter;
+}());
+export { MemoryRouter };

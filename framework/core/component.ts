@@ -1,101 +1,67 @@
-import { Theme } from './theme';
-import { FrameworkEngine } from './engine';
-
-export interface BoxConstraints {
-  minWidth: number;
-  maxWidth: number;
-  minHeight: number;
-  maxHeight: number;
-}
-
-export interface Padding {
-  top: number; right: number; bottom: number; left: number;
-}
-
-export interface Ripple {
-  x: number;
-  y: number;
-  radius: number;
-  targetRadius: number;
-  alpha: number;
-  state: 'growing' | 'fading';
-}
-
-export abstract class UIComponent {
-  id?: string;
-  x: number = 0;
-  y: number = 0;
-  width: number = 0;
-  height: number = 0;
-  parent?: UIComponent;
-  children: UIComponent[] = [];
-  
-  flex?: number;
-  padding: Padding = { top: 0, right: 0, bottom: 0, left: 0 };
-  
-  isHovered: boolean = false;
-  isFocused: boolean = false;
-  isPressed: boolean = false;
-  needsScrollIntoView: boolean = false;
-  
-  ripples: Ripple[] = [];
-  cleanups: Array<() => void> = [];
-
-  onClick?: (x: number, y: number, engine?: FrameworkEngine) => void;
-  onPointerDown?: (x: number, y: number, engine?: FrameworkEngine) => void;
-  onPointerUp?: (x: number, y: number, engine?: FrameworkEngine) => void;
-  onPointerMove?: (x: number, y: number, engine?: FrameworkEngine) => void;
-  onKeyDown?: (e: KeyboardEvent) => void;
-  onDestroy?: () => void;
-
-  destroy() {
-    for (const cleanup of this.cleanups) {
-      cleanup();
+var UIComponent = /** @class */ (function () {
+    function UIComponent() {
+        this.x = 0;
+        this.y = 0;
+        this.width = 0;
+        this.height = 0;
+        this.children = [];
+        this.padding = { top: 0, right: 0, bottom: 0, left: 0 };
+        this.isHovered = false;
+        this.isFocused = false;
+        this.isPressed = false;
+        this.needsScrollIntoView = false;
+        this.ripples = [];
+        this.cleanups = [];
     }
-    this.cleanups = [];
-    for (const child of this.children) {
-      child.destroy();
-    }
-    if (this.onDestroy) this.onDestroy();
-  }
-
-  handleClick(x: number, y: number, engine?: FrameworkEngine) {
-    if (this.onClick) this.onClick(x, y, engine);
-  }
-
-  addChild(child: UIComponent) {
-    child.parent = this;
-    this.children.push(child);
-  }
-
-  abstract measure(ctx: CanvasRenderingContext2D, constraints: BoxConstraints): { width: number, height: number };
-  
-  layout(x: number, y: number, width: number, height: number) {
-    this.x = x;
-    this.y = y;
-    this.width = width;
-    this.height = height;
-  }
-
-  abstract render(ctx: CanvasRenderingContext2D, theme: Theme, dt: number, engine: FrameworkEngine): void;
-
-  hitTest(x: number, y: number): UIComponent | null {
-    if (x >= this.x && x <= this.x + this.width && y >= this.y && y <= this.y + this.height) {
-      for (let i = this.children.length - 1; i >= 0; i--) {
-        const hit = this.children[i].hitTest(x, y);
-        if (hit) return hit;
-      }
-      return this;
-    }
-    return null;
-  }
-
-  findById(id: string): UIComponent | null {
-    if (this.id === id) return this;
-    for (const child of this.children) {
-      const found = child.findById(id);
-      if (found) return found;
-    }
-    return null;
-  }
-}
+    UIComponent.prototype.destroy = function () {
+        for (var _i = 0, _a = this.cleanups; _i < _a.length; _i++) {
+            var cleanup = _a[_i];
+            cleanup();
+        }
+        this.cleanups = [];
+        for (var _b = 0, _c = this.children; _b < _c.length; _b++) {
+            var child = _c[_b];
+            child.destroy();
+        }
+        if (this.onDestroy)
+            this.onDestroy();
+    };
+    UIComponent.prototype.handleClick = function (x, y, engine) {
+        if (this.onClick)
+            this.onClick(x, y, engine);
+    };
+    UIComponent.prototype.addChild = function (child) {
+        child.parent = this;
+        this.children.push(child);
+    };
+    UIComponent.prototype.layout = function (x, y, width, height) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+    };
+    UIComponent.prototype.hitTest = function (x, y) {
+        if (x >= this.x && x <= this.x + this.width && y >= this.y && y <= this.y + this.height) {
+            for (var i = this.children.length - 1; i >= 0; i--) {
+                var hit = this.children[i].hitTest(x, y);
+                if (hit)
+                    return hit;
+            }
+            return this;
+        }
+        return null;
+    };
+    UIComponent.prototype.findById = function (id) {
+        if (this.id === id)
+            return this;
+        for (var _i = 0, _a = this.children; _i < _a.length; _i++) {
+            var child = _a[_i];
+            var found = child.findById(id);
+            if (found)
+                return found;
+        }
+        return null;
+    };
+    return UIComponent;
+}());
+export { UIComponent };
