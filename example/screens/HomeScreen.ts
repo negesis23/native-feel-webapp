@@ -1,44 +1,35 @@
-import { xml, Compiler, createSignal } from '../../framework/index';
+var NativeCanvas = (window as any).NativeCanvas;
+var Box = NativeCanvas.Box;
+var Text = NativeCanvas.Text;
+var Touchable = NativeCanvas.Touchable;
+var createSignal = NativeCanvas.createSignal;
+
 import { state } from '../state';
 import { goAbout } from '../main';
 
-// 1. Reusable Component with LOCAL STATE
-Compiler.registerComponent('counter', function (props) {
-    var count = createSignal(parseInt(props.initial || '0'));
-    var increment = function () { count.value++; };
-    var decrement = function () { count.value--; };
+function Counter(title: string, countSignal: any) {
+    var increment = function () { countSignal.value++; };
+    var decrement = function () { countSignal.value--; };
     
-    return xml(
-        '<column bg="surfaceVariant" padding="16" radius="12" gap="12" align="center">',
-            '<text text="', props.title, '" variant="title" />',
-            '<row gap="16" align="center">',
-                '<button text="-" variant="tonal" on-click="', decrement, '" />',
-                '<text text="', count, '" variant="headline" />',
-                '<button text="+" variant="filled" on-click="', increment, '" />',
-            '</row>',
-        '</column>'
-    );
-});
+    return Box().bg('#2a2a2a').pad(16).radius(12).gap(12).align('center')
+        .child(Text(title).sz(18).col('#8ab4f8').bold())
+        .child(
+            Box().dir('row').gap(16).align('center')
+            .child(Box().bg('#4A4458').pad(8, 16).radius(20).ripple('rgba(255,255,255,0.1)').whilePressed(100, decrement).child(Text('-').col('white').sz(20)))
+            .child(Text(countSignal).sz(24).col('white').bold())
+            .child(Box().bg('#8ab4f8').pad(8, 16).radius(20).ripple('rgba(0,0,0,0.1)').whilePressed(100, increment).child(Text('+').col('#1e1e1e').sz(20)))
+            );
+            }
 
-export var HomeScreen = function () {
-    var toggleTheme = function () {
-        state.isDarkMode.value = !state.isDarkMode.value;
-    };
-    
-    // 2. Declarative UI
-    return xml(
-        '<column flex="1" bg="surface">',
-            '<row padding="16" gap="16">',
-                '<text text="Local State Demo" variant="title" flex="1" />',
-                '<iconbutton icon="palette" variant="standard" on-click="', state.openColorPicker, '" />',
-                '<iconbutton icon="light_mode" variant="standard" on-click="', toggleTheme, '" />',
-                '<iconbutton icon="info" variant="standard" on-click="', goAbout, '" />',
-            '</row>',
-            
-            '<column padding="24" gap="16" flex="1" align="center" justify="center">',
-                '<counter title="Player 1 Score" initial="0" />',
-                '<counter title="Player 2 Score" initial="10" />',
-            '</column>',
-        '</column>'
-    );
+            export var HomeScreen = function () {
+            return Box().flex(1).bg('#1e1e1e')
+            .child(
+            Box().dir('row').pad(16).gap(16).align('center').bg('#2a2a2a')
+                .child(Text("Fluent Canvas UI").sz(20).bold().col('white').flex(1))
+                .child(Box().pad(8).radius(20).ripple('rgba(255,255,255,0.2)').onClick(goAbout).child(Text("ℹ️").sz(24)))
+            )        .child(
+            Box().flex(1).pad(24).gap(16).align('center').justify('center')
+                .child(Counter("Global Counter", state.counter))
+                .child(Counter("Local Counter", createSignal(10)))
+        );
 };

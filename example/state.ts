@@ -1,6 +1,4 @@
-import { createSignal } from '../framework/index';
+var NativeCanvas = (window as any).NativeCanvas;
 export var state = {
-    isDarkMode: createSignal(true),
-    seedColor: createSignal('#4285F4'),
-    openColorPicker: function () { },
+  counter: NativeCanvas.createSignal(0)
 };

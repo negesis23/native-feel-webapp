@@ -1,39 +1,50 @@
-var MemoryRouter = /** @class */ (function () {
-    function MemoryRouter(initialPath) {
-        if (initialPath === void 0) { initialPath = '/'; }
-        this.routes = {};
-        this.currentPath = '/';
-        this.listeners = [];
-        this.currentPath = initialPath;
+export class MemoryRouter {
+  private routes: Record<string, Function> = {};
+  private currentPath: string = '/';
+  private listeners: Array<() => void> = [];
+
+  constructor(initialPath: string = '/') {
+    this.currentPath = initialPath;
+  }
+
+  addRoute(path: string, widgetBuilder: Function) {
+    this.routes[path] = widgetBuilder;
+  }
+
+  navigate(path: string) {
+    if (this.routes[path]) {
+      this.currentPath = path;
+      this.notifyListeners();
+    } else {
+      console.warn("Route not found: " + path);
     }
-    MemoryRouter.prototype.addRoute = function (path, templateBuilder) {
-        this.routes[path] = templateBuilder;
+  }
+
+  getCurrentWidget(): any {
+    var builder = this.routes[this.currentPath];
+    if (builder) return builder();
+    // Fallback widget if route not found
+    return {
+        destroy: function() {},
+        measure: function() { return {w:0,h:0}; },
+        layout: function() {},
+        render: function() {},
+        hitTest: function() { return null; }
     };
-    MemoryRouter.prototype.navigate = function (path) {
-        if (this.routes[path]) {
-            this.currentPath = path;
-            this.notifyListeners();
-        }
-        else {
-            console.warn("Route not found: ".concat(path));
-        }
+  }
+
+  subscribe(listener: () => void) {
+    this.listeners.push(listener);
+    var self = this;
+    return function() {
+      var idx = self.listeners.indexOf(listener);
+      if (idx !== -1) self.listeners.splice(idx, 1);
     };
-    MemoryRouter.prototype.getCurrentTemplate = function () {
-        var builder = this.routes[this.currentPath];
-        return builder ? builder() : '<column padding="24"><text text="404 Not Found" variant="headline" /></column>';
-    };
-    MemoryRouter.prototype.subscribe = function (listener) {
-        this.listeners.push(listener);
-        return function () {
-            this.listeners = this.listeners.filter(function (l) { return l !== listener; });
-        }.bind(this);
-    };
-    MemoryRouter.prototype.notifyListeners = function () {
-        for (var _i = 0, _a = this.listeners; _i < _a.length; _i++) {
-            var listener = _a[_i];
-            listener();
-        }
-    };
-    return MemoryRouter;
-}());
-export { MemoryRouter };
+  }
+
+  private notifyListeners() {
+    for (var i=0; i<this.listeners.length; i++) {
+      this.listeners[i]();
+    }
+  }
+}

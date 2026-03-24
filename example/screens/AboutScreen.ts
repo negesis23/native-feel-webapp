@@ -1,28 +1,24 @@
-import { xml } from '../../framework/index';
-import { state } from '../state';
+var NativeCanvas = (window as any).NativeCanvas;
+var Box = NativeCanvas.Box;
+var Text = NativeCanvas.Text;
+var Touchable = NativeCanvas.Touchable;
+
 import { goHome } from '../main';
 
 export var AboutScreen = function () {
-    var toggleTheme = function () {
-        state.isDarkMode.value = !state.isDarkMode.value;
-    };
-
-    return xml(
-        '<column flex="1" bg="surface">',
-            '<row padding="16" gap="16">',
-                '<iconbutton icon="arrow_back" variant="standard" on-click="', goHome, '" />',
-                '<text text="About Architecture" variant="title" flex="1" />',
-                '<iconbutton icon="light_mode" variant="standard" on-click="', toggleTheme, '" />',
-            '</row>',
-            
-            '<column padding="24" gap="20">',
-                '<text text="Clean Project Structure" variant="title" />',
-                '<text text="• state.ts: Centralized state &amp; handlers." variant="body" />',
-                '<text text="• screens/: Modular UI definitions." variant="body" />',
-                '<text text="• router.ts: Declarative route mapping." variant="body" />',
-                '<text text="• main.ts: Simple app bootstrapping." variant="body" />',
-                '<button text="Back to Home" variant="tonal" on-click="', goHome, '" />',
-            '</column>',
-        '</column>'
-    );
+    return Box().flex(1).bg('#1e1e1e')
+        .child(
+            Box().dir('row').pad(16).gap(16).align('center').bg('#2a2a2a')
+                .child(Box().pad(8).radius(20).ripple().onClick(goHome).child(Text("⬅️").sz(24)))
+                .child(Text("About Architecture").sz(20).bold().col('white').flex(1))
+        )
+        .child(
+            Box().pad(24).gap(20)
+                .child(Text("Clean Framework").sz(24).bold().col('#8ab4f8'))
+                .child(Text("• 100% Fluent API (Pipelining)").sz(14).col('#ccc'))
+                .child(Text("• Zero Strings, Zero Compilers").sz(14).col('#ccc'))
+                .child(Text("• Separated Framework & App Build").sz(14).col('#ccc'))
+                .child(Text("• Native Ripple Feedback").sz(14).col('#ccc'))
+                .child(Box().bg('#444').pad(12, 24).radius(24).align('center').ripple('rgba(255,255,255,0.1)').onClick(goHome).child(Text("Back to Home").col('white').sz(16)))
+        );
 };
