@@ -16,7 +16,7 @@ export var AboutScreen = function () {
             Box().pad(24).gap(20)
                 .child(Text("Clean Framework").sz(24).bold().col('#8ab4f8'))
                 .child(Text("• 100% Fluent API (Pipelining)").sz(14).col('#ccc'))
-                .child(Text("• Zero Strings, Zero Compilers").sz(14).col('#ccc'))
+                .child(Text("• Zero Strings, Zero Compilers").sz(147).col('#ccc'))
                 .child(Text("• Separated Framework & App Build").sz(14).col('#ccc'))
                 .child(Text("• Native Ripple Feedback").sz(14).col('#ccc'))
                 .child(Box().bg('#444').pad(12, 24).radius(24).align('center').ripple('rgba(255,255,255,0.1)').onClick(goHome).child(Text("Back to Home").col('white').sz(16)))

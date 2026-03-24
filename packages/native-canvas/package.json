@@ -1,0 +1,19 @@
+{
+  "name": "native-canvas",
+  "version": "0.1.0",
+  "main": "dist/native-canvas.js",
+  "module": "src/index.ts",
+  "unpkg": "dist/native-canvas.js",
+  "jsdelivr": "dist/native-canvas.js",
+  "scripts": {
+    "build": "rollup -c rollup.config.mjs",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^12.3.0",
+    "rollup": "^4.14.0",
+    "tslib": "^2.8.1",
+    "typescript": "5.9.3"
+  }
+}

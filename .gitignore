@@ -10,3 +10,5 @@ dist
 build
 *lock*
 *Screenshot*
+.turbo
+1.md

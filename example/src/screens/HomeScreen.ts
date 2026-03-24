@@ -15,9 +15,9 @@ function Counter(title: string, countSignal: any) {
         .child(Text(title).sz(18).col('#8ab4f8').bold())
         .child(
             Box().dir('row').gap(16).align('center')
-            .child(Box().bg('#4A4458').pad(8, 16).radius(20).ripple('rgba(255,255,255,0.1)').whilePressed(100, decrement).child(Text('-').col('white').sz(20)))
+            .child(Box().bg('#4A4458').pad(8, 16).radius(20).ripple('rgba(255,255,255,0.1)').whilePressed(300, decrement).child(Text('-').col('white').sz(20)))
             .child(Text(countSignal).sz(24).col('white').bold())
-            .child(Box().bg('#8ab4f8').pad(8, 16).radius(20).ripple('rgba(0,0,0,0.1)').whilePressed(100, increment).child(Text('+').col('#1e1e1e').sz(20)))
+            .child(Box().bg('#8ab4f8').pad(8, 16).radius(20).ripple('rgba(0,0,0,0.1)').whilePressed(300, increment).child(Text('+').col('#1e1e1e').sz(20)))
             );
             }
 

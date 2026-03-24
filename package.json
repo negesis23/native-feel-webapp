@@ -1,20 +1,15 @@
 {
-  "name": "native-canvas",
-  "version": "0.1.0",
+  "name": "native-canvas-monorepo",
   "private": true,
-  "type": "module",
   "scripts": {
-    "dev": "vite --port 9000",
-    "build": "rm -rf dist && npm run build:framework && npm run build:app && cp index.html dist/index.html && cp -r public/* dist/ 2>/dev/null || true && node -e \"const fs=require('fs'); let h=fs.readFileSync('dist/index.html','utf8'); h=h.replace(/<script type='module' id='dev-fw'>[\\\\s\\\\S]*?<\\/script>/, '<script src=\\\"native-canvas.js\\\"></script>'); h=h.replace(/<script type=\\\"module\\\" src=\\\"\\/example\\/main.ts\\\" id=\\\"dev-app\\\"><\\/script>/, '<script src=\\\"main.js\\\"></script>'); fs.writeFileSync('dist/index.html',h);\"",
-    "build:framework": "vite build -c vite.framework.config.ts",
-    "build:app": "vite build -c vite.app.config.ts",
-    "preview": "vite preview",
-    "clean": "rm -rf dist"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "clean": "turbo run clean"
   },
   "devDependencies": {
-    "rolldown": "^0.15.1",
-    "terser": "^5.46.1",
-    "typescript": "5.9.3",
-    "vite": "^8.0.1"
-  }
+    "turbo": "^1.13.0",
+    "turbo-linux-64": "^2.8.17",
+    "typescript": "5.9.3"
+  },
+  "packageManager": "pnpm@10.32.1"
 }

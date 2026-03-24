@@ -11,5 +11,5 @@ var app = new NativeCanvas.FrameworkApp({
 
 export function goHome() { appRouter.navigate('/'); }
 export function goAbout() { appRouter.navigate('/about'); }
-
+ 
 app.start();

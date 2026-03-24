@@ -1,0 +1,20 @@
+{
+  "name": "example-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "predev": "cp ../packages/native-canvas/dist/native-canvas.js public/ || true",
+    "dev": "vite",
+    "prebuild": "cp ../packages/native-canvas/dist/native-canvas.js public/ || true",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "native-canvas": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^8.0.1",
+    "typescript": "5.9.3"
+  }
+}
