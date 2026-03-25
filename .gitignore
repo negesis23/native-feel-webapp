@@ -6,9 +6,6 @@ coverage/
 .env*
 !.env.example
 *ssh*
-dist
-build
-*lock*
 *Screenshot*
 .turbo
 1.md
