@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "predev": "cp ../packages/native-canvas/dist/native-canvas.js public/ || true",
-    "dev": "vite",
+    "dev": "vite --port 9000",
     "prebuild": "cp ../packages/native-canvas/dist/native-canvas.js public/ || true",
     "build": "vite build",
     "preview": "vite preview",

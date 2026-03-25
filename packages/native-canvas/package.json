@@ -6,14 +6,11 @@
   "unpkg": "dist/native-canvas.js",
   "jsdelivr": "dist/native-canvas.js",
   "scripts": {
-    "build": "rollup -c rollup.config.mjs",
+    "build": "esbuild src/index.ts --bundle --outfile=dist/native-canvas.js --format=iife --global-name=NativeCanvas --minify-whitespace --minify-syntax --target=es5",
     "clean": "rm -rf dist"
   },
   "devDependencies": {
-    "@rollup/plugin-terser": "^0.4.4",
-    "@rollup/plugin-typescript": "^12.3.0",
-    "rollup": "^4.14.0",
-    "tslib": "^2.8.1",
+    "esbuild": "^0.27.4",
     "typescript": "5.9.3"
   }
 }

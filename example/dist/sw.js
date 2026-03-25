@@ -1,18 +1,24 @@
-const CACHE_NAME = 'canvas-todo-v1';
+var CACHE_NAME = 'canvas-todo-v1';
 
-self.addEventListener('install', (e) => {
+self.addEventListener('install', function(e) {
+  // @ts-ignore
   e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(['/']))
+    caches.open(CACHE_NAME).then(function(cache) {
+       return cache.addAll(['/']);
+    })
   );
-  self.skipWaiting();
 });
 
-self.addEventListener('activate', (e) => {
+self.addEventListener('activate', function(e) {
+  // @ts-ignore
   e.waitUntil(self.clients.claim());
 });
 
-self.addEventListener('fetch', (e) => {
+self.addEventListener('fetch', function(e) {
+  // @ts-ignore
   e.respondWith(
-    fetch(e.request).catch(() => caches.match('/'))
+    fetch((e as any).request).catch(function() {
+      return caches.match('/');
+    })
   );
 });
