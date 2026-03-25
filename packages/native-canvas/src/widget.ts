@@ -288,17 +288,34 @@ Widget.prototype.layout = function(x: number, y: number, w?: number, h?: number)
     }
 };
 
+function drawRoundRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
+    if (!radius) {
+        ctx.rect(x, y, width, height);
+        return;
+    }
+    radius = Math.min(radius, width / 2, height / 2);
+    if (ctx.roundRect) {
+        ctx.roundRect(x, y, width, height, radius);
+        return;
+    }
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+}
+
 Widget.prototype.render = function(ctx: CanvasRenderingContext2D, dt: number, engine: any) {
     var s = this._style;
     if (isNaN(s.w) || isNaN(s.h) || s.w <= 0 || s.h <= 0) return;
 
     if (s.bg !== 'transparent' || s.borderWidth > 0) {
         ctx.beginPath();
-        if (ctx.roundRect) {
-            ctx.roundRect(s.x, s.y, s.w, s.h, s.radius);
-        } else {
-            ctx.rect(s.x, s.y, s.w, s.h); // Fallback for very old canvas
-        }
+        drawRoundRect(ctx, s.x, s.y, s.w, s.h, s.radius);
         if (s.bg !== 'transparent') {
             ctx.fillStyle = s.bg;
             ctx.fill();
@@ -312,8 +329,7 @@ Widget.prototype.render = function(ctx: CanvasRenderingContext2D, dt: number, en
     
     if (this._isPressed && this._events.onClick && !s.rippleEnabled) {
         ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(s.x, s.y, s.w, s.h, s.radius);
-        else ctx.rect(s.x, s.y, s.w, s.h);
+        drawRoundRect(ctx, s.x, s.y, s.w, s.h, s.radius);
         ctx.fillStyle = 'rgba(0,0,0,0.1)';
         ctx.fill();
     }
@@ -322,8 +338,7 @@ Widget.prototype.render = function(ctx: CanvasRenderingContext2D, dt: number, en
     if (clip) {
         ctx.save();
         ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(s.x, s.y, s.w, s.h, s.radius);
-        else ctx.rect(s.x, s.y, s.w, s.h);
+        drawRoundRect(ctx, s.x, s.y, s.w, s.h, s.radius);
         ctx.clip();
     }
 
