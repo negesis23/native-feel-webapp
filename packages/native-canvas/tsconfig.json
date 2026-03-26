@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "checkJs": true,
+    "allowJs": true,
+    "target": "esnext",
     "module": "esnext",
     "moduleResolution": "node",
     "declaration": true,

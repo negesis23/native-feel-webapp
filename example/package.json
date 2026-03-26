@@ -4,17 +4,17 @@
   "private": true,
   "scripts": {
     "predev": "cp ../packages/native-canvas/dist/native-canvas.js public/ || true",
-    "dev": "vite --port 9000",
+    "dev": "node dev.mjs",
     "prebuild": "cp ../packages/native-canvas/dist/native-canvas.js public/ || true",
-    "build": "vite build",
-    "preview": "vite preview",
+    "build": "node build.mjs",
+    "preview": "npx serve dist",
     "clean": "rm -rf dist"
   },
   "dependencies": {
     "native-canvas": "workspace:*"
   },
   "devDependencies": {
-    "vite": "^8.0.1",
+    "esbuild": "^0.27.4",
     "typescript": "5.9.3"
   }
 }

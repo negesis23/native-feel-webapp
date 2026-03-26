@@ -6,7 +6,7 @@
   "unpkg": "dist/native-canvas.js",
   "jsdelivr": "dist/native-canvas.js",
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --outfile=dist/native-canvas.js --format=iife --global-name=NativeCanvas --minify-whitespace --minify-syntax --target=es5",
+    "build": "esbuild src/index.ts --bundle --outfile=dist/native-canvas.js --format=iife --global-name=NativeCanvas --minify-whitespace --minify-syntax --target=es2015",
     "clean": "rm -rf dist"
   },
   "devDependencies": {
