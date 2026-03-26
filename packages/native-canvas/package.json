@@ -1,16 +1,26 @@
 {
   "name": "native-canvas",
   "version": "0.1.0",
-  "main": "dist/native-canvas.js",
-  "module": "src/index.ts",
-  "unpkg": "dist/native-canvas.js",
-  "jsdelivr": "dist/native-canvas.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "unpkg": "./dist/index.global.js",
+  "jsdelivr": "./dist/index.global.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "default": "./dist/index.global.js"
+    }
+  },
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --outfile=dist/native-canvas.js --format=iife --global-name=NativeCanvas --minify-whitespace --minify-syntax --target=es2015",
+    "build": "tsup",
     "clean": "rm -rf dist"
   },
   "devDependencies": {
-    "esbuild": "^0.27.4",
+    "@swc/core": "^1.11.2",
+    "tsup": "^8.3.6",
     "typescript": "5.9.3"
   }
 }

@@ -1,4 +1,4 @@
-var CACHE_NAME = 'canvas-todo-v1';
+var CACHE_NAME = 'native-canvas-v1';
 
 self.addEventListener('install', function(e) {
   // @ts-ignore

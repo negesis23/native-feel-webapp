@@ -1,4 +1,4 @@
-export function FrameworkEngine(canvas: HTMLCanvasElement, root: any) {
+export function FrameworkEngine(canvas: HTMLCanvasElement, root: any): void {
   this.canvas = canvas;
   this.ctx = canvas.getContext('2d')!;
   this.root = root;

@@ -1,8 +1,6 @@
 {
   "compilerOptions": {
-    "checkJs": true,
-    "allowJs": true,
-    "target": "esnext",
+    "target": "es5",
     "module": "esnext",
     "moduleResolution": "node",
     "declaration": true,
@@ -12,7 +10,7 @@
     "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "lib": ["dom", "es5"]
+    "lib": ["dom", "es2015"]
   },
   "include": ["src/**/*"]
 }

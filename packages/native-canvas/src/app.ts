@@ -7,8 +7,8 @@ export interface AppConfig {
   router: MemoryRouter;
 }
 
-export class FrameworkApp {
-  private engine: FrameworkEngine | null = null;
+export class NativeCanvasApp {
+  private engine;
   private config: AppConfig;
 
   constructor(config: AppConfig) {

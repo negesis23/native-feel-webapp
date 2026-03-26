@@ -3,18 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "cp ../packages/native-canvas/dist/native-canvas.js public/ || true",
-    "dev": "node dev.mjs",
-    "prebuild": "cp ../packages/native-canvas/dist/native-canvas.js public/ || true",
-    "build": "node build.mjs",
-    "preview": "npx serve dist",
+    "predev": "mkdir -p dist && cp index.html dist/ && cp -r public/* dist/ 2>/dev/null || true && cp ../packages/native-canvas/dist/index.global.js dist/native-canvas.js",
+    "dev": "concurrently \"tsup --watch\" \"sirv dist --port 3000 --dev --reload --assets public\"",
+    "prebuild": "mkdir -p dist && cp index.html dist/ && cp -r public/* dist/ 2>/dev/null || true && cp ../packages/native-canvas/dist/index.global.js dist/native-canvas.js",
+    "build": "tsup",
+    "preview": "sirv dist --port 3000 --single",
     "clean": "rm -rf dist"
   },
   "dependencies": {
     "native-canvas": "workspace:*"
   },
   "devDependencies": {
-    "esbuild": "^0.27.4",
+    "@swc/core": "^1.11.2",
+    "concurrently": "^9.2.1",
+    "sirv-cli": "^3.0.1",
+    "tsup": "^8.3.6",
     "typescript": "5.9.3"
   }
 }
